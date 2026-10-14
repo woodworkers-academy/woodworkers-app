@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.13.3">
+  <link rel="stylesheet" href="./styles.css?v=1.14">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -37,7 +37,7 @@
     #activeBinHeader[data-van] span, #activeBinHeader[data-van] button, #btnBinAll[data-van] { color:var(--tile-text)!important; }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col font-sans pb-12">
+<body class="log-mode bg-slate-100 text-slate-900 min-h-screen flex flex-col font-sans pb-12">
   <!-- Mobile Header -->
   <header class="bg-indigo-600 text-white px-4 py-3 sticky top-0 z-30 shadow-md">
     <div class="flex items-center justify-between mb-2">
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.13.3</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.14</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -150,7 +150,7 @@
   <!-- ========================================== -->
   <!-- 2. LOG TOOL MOVEMENT MODE                  -->
   <!-- ========================================== -->
-  <main id="logContainer" class="max-w-md w-full mx-auto p-4 flex-1">
+  <main id="logContainer" class="max-w-md w-full mx-auto p-4 flex-1 compact-log">
     <!-- Success Banner -->
     <div id="successBox" class="hidden mb-4 p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 shadow-sm">
       <div class="flex items-center space-x-2">
@@ -162,7 +162,7 @@
       <button onclick="resetForm()" class="mt-2 text-xs font-semibold text-emerald-700 underline">Log another event</button>
     </div>
     <!-- Main Entry Form -->
-    <form id="logForm" onsubmit="handleFormSubmit(event)" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 space-y-4">
+    <form id="logForm" onsubmit="handleFormSubmit(event)" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 space-y-4 compact-log-form">
       <div id="quickFillNotice" class="hidden p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs font-semibold">
         <span id="quickFillNoticeText"></span>
       </div>
@@ -171,7 +171,7 @@
   <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Employee</label>
   <!-- Hidden input keeps your form working with handleFormSubmit -->
   <input type="hidden" id="employee" value="">
-  <div id="employeeTileGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+  <div id="employeeTileGrid" class="grid grid-cols-3 gap-2">
     <button type="button" onclick="selectEmployeeTile(this, 'Kyle Meyer')" 
             class="employee-tile choice-tile" aria-pressed="false">
       Kyle Meyer
@@ -198,62 +198,67 @@
     </button>
   </div>
 </div>
-      <!-- Searchable Item Picker (Autocomplete) -->
-      <div class="relative">
-        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-          Item <span class="text-indigo-600 font-normal">(Type to search)</span>
-        </label>
+      <!-- Item + Quantity -->
+      <div class="log-item-qty-grid">
+        <div class="log-item-column">
         <div class="relative">
-          <input 
-            type="text" 
-            id="itemSearch" 
-            placeholder="e.g. 7/16 Bit, C Clamp, Shinto..." 
-            autocomplete="off"
-            required
-            oninput="onSearchInput(this.value)"
-            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-3 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none"
-          />
-          <button type="button" onclick="clearItemSearch()" id="clearBtn" class="hidden absolute right-3 top-3 text-slate-400 font-bold">✕</button>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
+            Item <span class="text-indigo-600 font-normal">(Type to search)</span>
+          </label>
+          <div class="relative">
+            <input 
+              type="text" 
+              id="itemSearch" 
+              placeholder="e.g. 7/16 Bit, C Clamp, Shinto..." 
+              autocomplete="off"
+              required
+              oninput="onSearchInput(this.value)"
+              class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-3 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none"
+            />
+            <button type="button" onclick="clearItemSearch()" id="clearBtn" class="hidden absolute right-3 top-3 text-slate-400 font-bold">✕</button>
+          </div>
+          <div id="autocompleteList" class="autocomplete-items hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-52 overflow-y-auto z-50 divide-y divide-slate-100"></div>
         </div>
-        <div id="autocompleteList" class="autocomplete-items hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-52 overflow-y-auto z-50 divide-y divide-slate-100"></div>
+        </div>
+        <div class="log-qty-column">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Quantity</label>
+          <div class="flex items-center space-x-3">
+            <button type="button" onclick="adjustQty(-1)" class="w-12 h-11 bg-slate-200 active:bg-slate-300 rounded-xl font-bold text-lg text-slate-700 flex items-center justify-center">−</button>
+            <input type="number" id="quantity" min="1" value="1" required class="flex-1 text-center font-bold text-lg bg-slate-50 border border-slate-300 rounded-xl py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+            <button type="button" onclick="adjustQty(1)" class="w-12 h-11 bg-slate-200 active:bg-slate-300 rounded-xl font-bold text-lg text-slate-700 flex items-center justify-center">+</button>
+          </div>
+        </div>
+        </div>
       </div>
       <!-- ACTION / EVENT TILES -->
       <div>
         <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Action / Event</label>
-        <div id="actionTileGrid" class="grid grid-cols-2 gap-2 text-xs">
-          <button type="button" onclick="selectActionTab('Broke, Needs replacement')" id="tabBroke" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
+        <div id="actionTileGrid" class="grid grid-cols-3 gap-2 text-xs">
+          <button type="button" onclick="selectActionTab('Broke, Needs replacement')" id="tabBroke" title="Broke, Needs replacement" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
             <span class="text-sm">⚠️</span>
-            <span class="leading-tight mt-1">Broke, Needs replacement</span>
+            <span class="leading-tight mt-1">Broken</span>
           </button>
-          <button type="button" onclick="selectActionTab('Missing, Needs replacement')" id="tabMissing" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
+          <button type="button" onclick="selectActionTab('Missing, Needs replacement')" id="tabMissing" title="Missing, Needs replacement" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
             <span class="text-sm">❓</span>
-            <span class="leading-tight mt-1">Missing, Needs replacement</span>
+            <span class="leading-tight mt-1">Missing</span>
           </button>
-          <button type="button" onclick="selectActionTab('Repaired')" id="tabRepaired" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
+          <button type="button" onclick="selectActionTab('Repaired')" id="tabRepaired" title="Repaired" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
             <span class="text-sm">🔧</span>
             <span class="leading-tight mt-1">Repaired</span>
           </button>
-          <button type="button" onclick="selectActionTab('Restocked from tool room')" id="tabRestock" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
+          <button type="button" onclick="selectActionTab('Restocked from tool room')" id="tabRestock" title="Restocked from tool room" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
             <span class="text-sm">📦</span>
-            <span class="leading-tight mt-1">Restocked from tool room</span>
+            <span class="leading-tight mt-1">Restock</span>
           </button>
-          <button type="button" onclick="selectActionTab('Moved/Transferred Stock')" id="tabTransfer" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
+          <button type="button" onclick="selectActionTab('Moved/Transferred Stock')" id="tabTransfer" title="Moved/Transferred Stock" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
             <span class="text-sm">🔄</span>
-            <span class="leading-tight mt-1">Moved/Transferred Stock</span>
+            <span class="leading-tight mt-1">Moved</span>
           </button>
-          <button type="button" onclick="selectActionTab('Other Event (Found, Disposed, Purchased, Sold)')" id="tabOther" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
+          <button type="button" onclick="selectActionTab('Other Event (Found, Disposed, Purchased, Sold)')" id="tabOther" title="Other Event (Found, Disposed, Purchased)" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
             <span class="text-sm">📋</span>
-            <span class="leading-tight mt-1">Other Event (Found, Disposed, Purchased)</span>
+            <span class="leading-tight mt-1">Other</span>
           </button>
-        </div>
-      </div>
-      <!-- Quantity Stepper -->
-      <div>
-        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Quantity</label>
-        <div class="flex items-center space-x-3">
-          <button type="button" onclick="adjustQty(-1)" class="w-12 h-11 bg-slate-200 active:bg-slate-300 rounded-xl font-bold text-lg text-slate-700 flex items-center justify-center">−</button>
-          <input type="number" id="quantity" min="1" value="1" required class="flex-1 text-center font-bold text-lg bg-slate-50 border border-slate-300 rounded-xl py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
-          <button type="button" onclick="adjustQty(1)" class="w-12 h-11 bg-slate-200 active:bg-slate-300 rounded-xl font-bold text-lg text-slate-700 flex items-center justify-center">+</button>
         </div>
       </div>
       <!-- Sub-Fields: Restocked -->
@@ -399,10 +404,12 @@
         </div>
       </div>
       <!-- Notes Field -->
-      <div>
-        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Notes (Optional)</label>
-        <input type="text" id="notes" placeholder="Optional notes or details..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-      </div>
+      <details id="notesDetails" class="log-notes-details">
+        <summary>+ Add note <span>(optional)</span></summary>
+        <div class="log-notes-input-wrap">
+          <input type="text" id="notes" placeholder="Optional notes or details..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+      </details>
       <!-- Submit Button -->
       <button 
         type="submit" 
@@ -413,7 +420,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.13.3"></script>
+  <script src="pwa.js?v=1.14"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -508,6 +515,12 @@
         const grid = document.createElement('div');
         grid.id = select.id + 'TileGrid';
         grid.className = 'choice-grid';
+        if (['whichVanRestocked', 'vanOrLocationBroke'].includes(select.id)) {
+          grid.classList.add('choice-grid-3');
+        }
+        if (select.id === 'didYouReplace') {
+          grid.classList.add('replace-choice-grid');
+        }
         grid.setAttribute('role', 'group');
         const label = select.parentElement.querySelector('label');
         if (label) grid.setAttribute('aria-label', label.textContent.trim());
@@ -583,6 +596,7 @@
     // MODE SWITCHER (LOG vs INVENTORY)
     function switchTopMode(mode) {
       currentTopMode = mode;
+      document.body.classList.toggle('log-mode', mode === 'log');
       const logCont = document.getElementById('logContainer');
       const invCont = document.getElementById('inventoryContainer');
       const btnLog = document.getElementById('modeBtnLog');
@@ -831,6 +845,8 @@
       document.getElementById('clearBtn').classList.remove('hidden');
       document.getElementById('quantity').value = String(qty);
       document.getElementById('notes').value = '';
+      const notesDetails = document.getElementById('notesDetails');
+      if (notesDetails) notesDetails.open = false;
       document.getElementById('successBox').classList.add('hidden');
 
       if (source === 'Tool Room') {
@@ -1269,6 +1285,8 @@
       document.getElementById('itemSearch').value = '';
       document.getElementById('quantity').value = '1';
       document.getElementById('notes').value = '';
+      const notesDetails = document.getElementById('notesDetails');
+      if (notesDetails) notesDetails.open = false;
       document.getElementById('successBox').classList.add('hidden');
       document.getElementById('quickFillNotice').classList.add('hidden');
       document.getElementById('clearBtn').classList.add('hidden');

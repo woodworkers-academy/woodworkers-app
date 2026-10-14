@@ -315,3 +315,192 @@ img,svg{display:block;vertical-align:middle}
 .replacement-source-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .replacement-source-button{min-height:44px;padding:9px 8px;border-radius:.75rem;border:1px solid #a5b4fc;background:#eef2ff;color:#3730a3;font-size:.72rem;font-weight:800;text-align:center}
 .replacement-source-button:active{background:#e0e7ff}
+
+
+/* v1.14 compact Log Tool Event layout.
+   The common class-lead workflow is designed to fit on a typical phone screen.
+   Expanded/less-common options may still scroll. */
+body.log-mode {
+  padding-bottom: 0;
+}
+body.log-mode > header {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+body.log-mode > header > div:first-child {
+  margin-bottom: 4px !important;
+}
+body.log-mode > header h1 {
+  font-size: 14px !important;
+  line-height: 18px !important;
+}
+body.log-mode > header .w-6.h-6 {
+  width: 20px !important;
+  height: 20px !important;
+}
+body.log-mode #modeBtnLog,
+body.log-mode #modeBtnInv {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+body.log-mode #syncStatusBar {
+  padding-top: 3px !important;
+  padding-bottom: 3px !important;
+  font-size: 10px !important;
+  line-height: 13px !important;
+}
+#logContainer.compact-log {
+  padding: 8px 10px 12px !important;
+}
+#logForm.compact-log-form {
+  padding: 10px !important;
+}
+#logForm.compact-log-form > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 8px !important;
+}
+#logForm.compact-log-form label {
+  margin-bottom: 3px !important;
+}
+#employeeTileGrid {
+  grid-template-columns: repeat(3,minmax(0,1fr)) !important;
+  gap: 5px !important;
+}
+#employeeTileGrid .choice-tile {
+  min-height: 38px !important;
+  padding: 6px 5px !important;
+  font-size: 11px !important;
+  line-height: 13px !important;
+}
+#actionTileGrid {
+  grid-template-columns: repeat(3,minmax(0,1fr)) !important;
+  gap: 5px !important;
+}
+#actionTileGrid .action-tab {
+  min-height: 48px !important;
+  padding: 6px 7px !important;
+  font-size: 11px !important;
+  line-height: 13px !important;
+  text-align: center !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+#actionTileGrid .action-tab > span:first-child {
+  font-size: 13px !important;
+  line-height: 14px !important;
+}
+#actionTileGrid .action-tab > span:last-child {
+  margin-top: 2px !important;
+}
+.log-item-qty-grid {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 132px;
+  gap: 8px;
+  align-items: end;
+}
+.log-item-column > .relative {
+  width: 100%;
+}
+.log-qty-column > div > .flex {
+  gap: 4px;
+}
+.log-qty-column .w-12 {
+  width: 36px !important;
+}
+.log-qty-column .h-11 {
+  height: 40px !important;
+}
+.log-qty-column input {
+  min-width: 0;
+  height: 40px;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+  font-size: 16px !important;
+}
+#itemSearch {
+  min-height: 40px;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+.choice-grid {
+  gap: 5px !important;
+}
+.choice-grid .choice-tile {
+  min-height: 38px !important;
+  padding: 6px 7px !important;
+  font-size: 11px !important;
+  line-height: 13px !important;
+}
+.choice-grid-3 {
+  grid-template-columns: repeat(3,minmax(0,1fr)) !important;
+}
+.replace-choice-grid {
+  grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+}
+#secBrokeMissing,
+#secRestock,
+#secRepaired,
+#secTransfer,
+#secOther {
+  margin-top: 7px !important;
+}
+#secBrokeMissing > div,
+#secRestock > div,
+#secRepaired > div,
+#secTransfer > div,
+#secOther > div {
+  margin-top: 0 !important;
+}
+#secBrokeMissing > div:nth-child(2) {
+  padding: 7px !important;
+}
+#secBrokeMissing > div:nth-child(2) > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 5px !important;
+}
+.log-notes-details {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+.log-notes-details summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 7px 10px;
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 700;
+  color: #475569;
+}
+.log-notes-details summary::-webkit-details-marker {
+  display: none;
+}
+.log-notes-details summary span {
+  font-weight: 500;
+  color: #94a3b8;
+}
+.log-notes-input-wrap {
+  padding: 0 8px 8px;
+}
+#submitBtn {
+  margin-top: 8px !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+#quickFillNotice {
+  padding: 7px 9px !important;
+  font-size: 11px !important;
+  line-height: 14px !important;
+}
+#successBox {
+  margin-bottom: 8px !important;
+  padding: 9px !important;
+}
+@media (max-width: 370px) {
+  .log-item-qty-grid {
+    grid-template-columns: minmax(0,1fr) 122px;
+    gap: 6px;
+  }
+  #employeeTileGrid .choice-tile,
+  .choice-grid .choice-tile {
+    font-size: 10px !important;
+  }
+}

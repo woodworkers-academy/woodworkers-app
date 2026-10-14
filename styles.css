@@ -504,3 +504,123 @@ body.log-mode #syncStatusBar {
     font-size: 10px !important;
   }
 }
+
+
+/* v1.14.1 — slightly roomier common logging layout without changing
+   the employee or event tiles. */
+#logContainer.compact-log {
+  padding: 10px 11px 14px !important;
+}
+#logForm.compact-log-form {
+  padding: 12px !important;
+}
+#logForm.compact-log-form > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 10px !important;
+}
+
+/* Give Item / Quantity a little more breathing room. */
+.log-item-qty-grid {
+  gap: 10px;
+}
+#itemSearch {
+  min-height: 42px;
+  padding-top: 9px !important;
+  padding-bottom: 9px !important;
+}
+.log-qty-column .w-12 {
+  width: 38px !important;
+}
+.log-qty-column .h-11,
+.log-qty-column input {
+  height: 42px !important;
+}
+
+/* Keep the event and employee tiles exactly as they were in v1.14. */
+
+/* Separate the van/location choices from the replacement question. */
+#secBrokeMissing .replacement-question-box {
+  margin-top: 11px !important;
+  padding: 9px !important;
+}
+#secBrokeMissing .replacement-question-box > label {
+  margin-bottom: 5px !important;
+}
+
+/* A touch more room in the common location/replacement controls. */
+#secBrokeMissing .choice-grid {
+  gap: 6px !important;
+}
+#secBrokeMissing .choice-grid .choice-tile {
+  min-height: 40px !important;
+  padding: 7px 7px !important;
+}
+
+/* Split replacement quantities sit side-by-side on one line. */
+#secSplitQuantities.split-qty-grid:not(.hidden) {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  align-items: end;
+}
+.split-qty-group {
+  min-width: 0;
+}
+.split-qty-group label {
+  min-height: 28px;
+  display: flex !important;
+  align-items: flex-end;
+  line-height: 13px !important;
+}
+.split-qty-stepper {
+  display: grid;
+  grid-template-columns: 32px minmax(42px, 1fr) 32px;
+  gap: 4px;
+  align-items: center;
+}
+.split-qty-btn {
+  width: 32px;
+  height: 36px;
+  border-radius: 9px;
+  border: 1px solid #cbd5e1;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 17px;
+  line-height: 1;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.split-qty-btn:active {
+  background: #cbd5e1;
+}
+.split-qty-input {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  border-radius: 9px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 800;
+  outline: none;
+  padding: 3px;
+}
+.split-qty-input:focus {
+  box-shadow: 0 0 0 2px #6366f1;
+}
+
+/* Preserve a little extra bottom room on smaller phones. */
+@media (max-height: 720px) {
+  #logContainer.compact-log {
+    padding-top: 8px !important;
+  }
+  #logForm.compact-log-form {
+    padding: 10px !important;
+  }
+  #logForm.compact-log-form > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 8px !important;
+  }
+}

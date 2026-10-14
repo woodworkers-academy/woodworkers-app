@@ -703,3 +703,66 @@ body.log-mode #syncStatusBar {
     min-height: 36px;
   }
 }
+
+
+/* v1.15.2 — make the main Quantity control easier to read and tap. */
+.log-item-qty-grid {
+  grid-template-columns: minmax(0, 1fr) 148px !important;
+  gap: 11px !important;
+}
+
+.log-qty-column > div > .flex {
+  display: grid !important;
+  grid-template-columns: 38px minmax(56px, 1fr) 38px !important;
+  gap: 5px !important;
+  align-items: center !important;
+}
+
+/* Tailwind's space-x utility can otherwise steal width from the number field. */
+.log-qty-column > div > .flex > * {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.log-qty-column .w-12 {
+  width: 38px !important;
+  min-width: 38px !important;
+}
+
+.log-qty-column input#quantity {
+  width: 100% !important;
+  min-width: 56px !important;
+  height: 42px !important;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* Hide browser number spinners so the quantity itself gets the full field width. */
+.log-qty-column input#quantity::-webkit-outer-spin-button,
+.log-qty-column input#quantity::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+@media (max-width: 370px) {
+  .log-item-qty-grid {
+    grid-template-columns: minmax(0, 1fr) 140px !important;
+    gap: 8px !important;
+  }
+  .log-qty-column > div > .flex {
+    grid-template-columns: 35px minmax(54px, 1fr) 35px !important;
+    gap: 4px !important;
+  }
+  .log-qty-column .w-12 {
+    width: 35px !important;
+    min-width: 35px !important;
+  }
+  .log-qty-column input#quantity {
+    min-width: 54px !important;
+  }
+}

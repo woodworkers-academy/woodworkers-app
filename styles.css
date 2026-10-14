@@ -642,3 +642,64 @@ body.log-mode #syncStatusBar {
 .replaced-event-section .choice-grid {
   gap: 6px !important;
 }
+
+
+/* v1.15.1 — comfort pass for the common phone workflow. */
+
+/* Employee tiles: slightly taller without changing the 3x2 layout. */
+#employeeTileGrid .choice-tile {
+  min-height: 43px !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+/* Location/source/destination tiles: a little easier to tap. */
+.choice-grid .choice-tile {
+  min-height: 42px !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+/* Keep event buttons exactly as they were. */
+#actionTileGrid .action-tab {
+  min-height: 48px !important;
+  padding: 6px 7px !important;
+}
+
+/* Give "Replaced in" clear separation from the replacement-source buttons above. */
+.replaced-event-section > div + div {
+  margin-top: 13px !important;
+}
+.replaced-event-section > div + div > label {
+  margin-bottom: 5px !important;
+}
+
+/* Notes are always visible, but compact enough to keep the normal flow on-screen. */
+.log-notes-visible {
+  margin-top: 9px !important;
+}
+.log-notes-visible input {
+  min-height: 38px;
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+}
+
+/* Preserve fit on shorter phones without making the normal UI feel cramped. */
+@media (max-height: 720px) {
+  #employeeTileGrid .choice-tile {
+    min-height: 41px !important;
+    padding-top: 7px !important;
+    padding-bottom: 7px !important;
+  }
+  .choice-grid .choice-tile {
+    min-height: 40px !important;
+    padding-top: 7px !important;
+    padding-bottom: 7px !important;
+  }
+  .replaced-event-section > div + div {
+    margin-top: 10px !important;
+  }
+  .log-notes-visible input {
+    min-height: 36px;
+  }
+}

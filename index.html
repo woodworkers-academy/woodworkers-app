@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.15">
+  <link rel="stylesheet" href="./styles.css?v=1.15.1">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.15</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.15.1</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -395,12 +395,10 @@
         </div>
       </div>
       <!-- Notes Field -->
-      <details id="notesDetails" class="log-notes-details">
-        <summary>+ Add note <span>(optional)</span></summary>
-        <div class="log-notes-input-wrap">
-          <input type="text" id="notes" placeholder="Optional notes or details..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-        </div>
-      </details>
+      <div id="notesDetails" class="log-notes-visible">
+        <label for="notes" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Notes <span class="font-normal normal-case">(optional)</span></label>
+        <input type="text" id="notes" placeholder="Optional notes or details..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+      </div>
       <!-- Submit Button -->
       <button 
         type="submit" 
@@ -411,7 +409,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.15"></script>
+  <script src="pwa.js?v=1.15.1"></script>
   <script>
     let allItems = [];
     let currentAction = '';

@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.14.1">
+  <link rel="stylesheet" href="./styles.css?v=1.15">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.14.1</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.15</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -251,9 +251,9 @@
             <span class="text-sm">📦</span>
             <span class="leading-tight mt-1">Restock</span>
           </button>
-          <button type="button" onclick="selectActionTab('Moved/Transferred Stock')" id="tabTransfer" title="Moved/Transferred Stock" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
-            <span class="text-sm">🔄</span>
-            <span class="leading-tight mt-1">Moved</span>
+          <button type="button" onclick="selectActionTab('Replaced')" id="tabTransfer" title="Replaced from stock" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
+            <span class="text-sm">♻️</span>
+            <span class="leading-tight mt-1">Replaced</span>
           </button>
           <button type="button" onclick="selectActionTab('Other Event (Found, Disposed, Purchased, Sold)')" id="tabOther" title="Other Event (Found, Disposed, Purchased)" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
             <span class="text-sm">📋</span>
@@ -329,34 +329,23 @@
           </select>
         </div>
       </div>
-      <!-- Sub-Fields: Moved / Transferred -->
-      <div id="secTransfer" class="tab-content hidden space-y-3 pt-1">
+      <!-- Sub-Fields: Replaced -->
+      <div id="secTransfer" class="tab-content hidden space-y-3 pt-1 replaced-event-section">
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Moved From</label>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Replacement source</label>
           <select id="transferMovedFrom" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
-            <option value="Class Stock">Class Stock</option>
-            <option value="2015 Van">2015 Van</option>
-            <option value="2021 Van">2021 Van</option>
-            <option value="2026 Van Floor Level">2026 Van Floor Level</option>
-            <option value="2026 Van 2nd Level">2026 Van 2nd Level</option>
-            <option value="2026 Van Other">2026 Van Other</option>
-            <option value="Broken Bin">Broken Bin</option>
             <option value="Repaired Bin">Repaired Bin</option>
-            <option value="Missing">Missing</option>
+            <option value="Class Stock">Class Stock</option>
           </select>
         </div>
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Moved To</label>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Replaced in</label>
           <select id="transferMovedTo" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
-            <option value="Class Stock">Class Stock</option>
             <option value="2015 Van">2015 Van</option>
             <option value="2021 Van">2021 Van</option>
             <option value="2026 Van Floor Level">2026 Van Floor Level</option>
             <option value="2026 Van 2nd Level">2026 Van 2nd Level</option>
             <option value="2026 Van Other">2026 Van Other</option>
-            <option value="Broken Bin">Broken Bin</option>
-            <option value="Repaired Bin">Repaired Bin</option>
-            <option value="Missing">Missing</option>
           </select>
         </div>
       </div>
@@ -367,6 +356,7 @@
           <select id="otherEventSub" onchange="onOtherEventChange(this.value)" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
             <option value="Found">Found</option>
             <option value="Disposed of">Disposed of</option>
+            <option value="Moved">Moved</option>
             <option value="Added/Purchased">Added/Purchased</option>
           </select>
         </div>
@@ -383,6 +373,7 @@
             <option value="Broken Bin">Broken Bin</option>
             <option value="Repaired Bin">Repaired Bin</option>
             <option value="E-commerce Stock">E-commerce Stock</option>
+            <option value="Tool Room">Tool Room</option>
             <option value="Missing">Missing</option>
           </select>
         </div>
@@ -420,7 +411,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.14.1"></script>
+  <script src="pwa.js?v=1.15"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -496,6 +487,14 @@
         });
         from.value = '';
         to.value = 'Tool Room';
+      } else if (eventName === 'Moved') {
+        // Generic/exception movement: intentionally expose the broad location set.
+        filterLocationTiles(from, function(value) {
+          return value === 'Tool Room' || value === 'Missing' || value === 'E-commerce Stock' || regularLocation(value);
+        });
+        filterLocationTiles(to, function(value) {
+          return value === 'Tool Room' || value === 'E-commerce Stock' || regularLocation(value);
+        });
       }
       // Hide the fixed, automatically selected source/destination controls.
       from.parentElement.hidden = eventName === 'Found' || eventName === 'Added/Purchased';
@@ -520,6 +519,15 @@
         }
         if (select.id === 'didYouReplace') {
           grid.classList.add('replace-choice-grid');
+        }
+        if (select.id === 'transferMovedFrom') {
+          grid.classList.add('replace-source-grid');
+        }
+        if (select.id === 'transferMovedTo') {
+          grid.classList.add('choice-grid-3');
+        }
+        if (select.id === 'otherEventSub') {
+          grid.classList.add('other-event-grid');
         }
         grid.setAttribute('role', 'group');
         const label = select.parentElement.querySelector('label');
@@ -854,7 +862,7 @@
         const van = currentInvTab === '2015' ? '2015 Van' : (currentInvTab === '2021' ? '2021 Van' : '2026 Van');
         setChoiceValue('whichVanRestocked', van);
       } else {
-        selectActionTab('Moved/Transferred Stock');
+        selectActionTab('Replaced');
         setChoiceValue('transferMovedFrom', source);
         setChoiceValue('transferMovedTo', destination);
       }
@@ -1160,7 +1168,7 @@
       else if (actionName === 'Missing, Needs replacement') activeTabId = 'tabMissing';
       else if (actionName === 'Repaired') activeTabId = 'tabRepaired';
       else if (actionName === 'Restocked from tool room') activeTabId = 'tabRestock';
-      else if (actionName === 'Moved/Transferred Stock') activeTabId = 'tabTransfer';
+      else if (actionName === 'Replaced') activeTabId = 'tabTransfer';
       else if (actionName === 'Other Event (Found, Disposed, Purchased, Sold)') activeTabId = 'tabOther';
       const activeBtn = document.getElementById(activeTabId);
       if (activeBtn) {
@@ -1173,7 +1181,7 @@
         document.getElementById('secBrokeMissing').classList.remove('hidden');
       } else if (actionName === 'Repaired') {
         document.getElementById('secRepaired').classList.remove('hidden');
-      } else if (actionName === 'Moved/Transferred Stock') {
+      } else if (actionName === 'Replaced') {
         document.getElementById('secTransfer').classList.remove('hidden');
       } else if (actionName === 'Other Event (Found, Disposed, Purchased, Sold)') {
         document.getElementById('secOther').classList.remove('hidden');
@@ -1220,6 +1228,16 @@
         document.getElementById('vanOrLocationBrokeTileGrid').scrollIntoView({ behavior:'smooth', block:'center' });
         return;
       }
+      if (currentAction === 'Replaced' && (!document.getElementById('transferMovedFrom').value || !document.getElementById('transferMovedTo').value)) {
+        alert('Please select the replacement source and van location.');
+        document.getElementById('transferMovedFromTileGrid').scrollIntoView({ behavior:'smooth', block:'center' });
+        return;
+      }
+      if (currentAction === 'Other Event (Found, Disposed, Purchased, Sold)' && document.getElementById('otherEventSub').value === 'Moved' && (!document.getElementById('otherMovedFrom').value || !document.getElementById('otherMovedTo').value)) {
+        alert('Please select where the item moved from and to.');
+        document.getElementById('otherMovedFromTileGrid').scrollIntoView({ behavior:'smooth', block:'center' });
+        return;
+      }
       const submitBtn = document.getElementById('submitBtn');
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<span>Saving to Sheet...</span>';
@@ -1241,6 +1259,17 @@
         otherMovedFrom: document.getElementById('otherMovedFrom').value,
         otherMovedTo: document.getElementById('otherMovedTo').value
       };
+
+      // Keep the existing Apps Script / Google Sheet schema unchanged.
+      // Replaced is a purpose-built UI for the existing stock-transfer event.
+      if (currentAction === 'Replaced') {
+        payload.action = 'Moved/Transferred Stock';
+      } else if (currentAction === 'Other Event (Found, Disposed, Purchased, Sold)' && payload.otherEventSub === 'Moved') {
+        payload.action = 'Moved/Transferred Stock';
+        payload.transferMovedFrom = payload.otherMovedFrom;
+        payload.transferMovedTo = payload.otherMovedTo;
+      }
+
       apiSubmitLog(payload)
         .then(function(res) {
           submitBtn.disabled = false;

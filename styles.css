@@ -624,3 +624,21 @@ body.log-mode #syncStatusBar {
     margin-top: 8px !important;
   }
 }
+
+
+/* v1.15 — purpose-built Replaced event. */
+.replace-source-grid {
+  grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+}
+.other-event-grid {
+  grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+}
+.replaced-event-section {
+  margin-top: 8px !important;
+}
+.replaced-event-section > div + div {
+  margin-top: 8px !important;
+}
+.replaced-event-section .choice-grid {
+  gap: 6px !important;
+}

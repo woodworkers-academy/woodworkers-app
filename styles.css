@@ -766,3 +766,51 @@ body.log-mode #syncStatusBar {
     min-width: 54px !important;
   }
 }
+
+
+/* v1.15.3 — even spacing for expanded event-option groups.
+   Selected tiles have a ring, so leave enough clear space before the next label. */
+#secTransfer > div + div,
+#secOther > div + div,
+#secRestock > div + div,
+#secRepaired > div + div,
+#secBrokeMissing > div + div {
+  margin-top: 16px !important;
+}
+
+/* Keep section titles consistently separated from the controls beneath them. */
+#secTransfer > div > label,
+#secOther > div > label,
+#secRestock > div > label,
+#secRepaired > div > label,
+#secBrokeMissing > div > label {
+  margin-bottom: 6px !important;
+}
+
+/* The replacement question is a bordered panel, so it needs slightly less
+   extra space than two plain field groups while still clearing the van buttons. */
+#secBrokeMissing .replacement-question-box {
+  margin-top: 14px !important;
+}
+
+/* Match "Replaced in" and "Moved from / Moved to" rhythm exactly. */
+.replaced-event-section > div + div,
+#secOther > div + div {
+  margin-top: 16px !important;
+}
+
+/* On shorter phones, preserve the visual separation but trim a couple pixels. */
+@media (max-height: 720px) {
+  #secTransfer > div + div,
+  #secOther > div + div,
+  #secRestock > div + div,
+  #secRepaired > div + div,
+  #secBrokeMissing > div + div,
+  .replaced-event-section > div + div {
+    margin-top: 13px !important;
+  }
+
+  #secBrokeMissing .replacement-question-box {
+    margin-top: 12px !important;
+  }
+}

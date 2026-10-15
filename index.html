@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.15.3">
+  <link rel="stylesheet" href="./styles.css?v=1.16">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.15.3</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.16</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -243,9 +243,9 @@
             <span class="text-sm">❓</span>
             <span class="leading-tight mt-1">Missing</span>
           </button>
-          <button type="button" onclick="selectActionTab('Repaired')" id="tabRepaired" title="Repaired" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
-            <span class="text-sm">🔧</span>
-            <span class="leading-tight mt-1">Repaired</span>
+          <button type="button" onclick="selectActionTab('Needs replacement')" id="tabNeedsReplacement" title="Needs replacement / low stock" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
+            <span class="text-sm">🧰</span>
+            <span class="leading-tight mt-1">Needs replacement</span>
           </button>
           <button type="button" onclick="selectActionTab('Restocked from tool room')" id="tabRestock" title="Restocked from tool room" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
             <span class="text-sm">📦</span>
@@ -259,6 +259,34 @@
             <span class="text-sm">📋</span>
             <span class="leading-tight mt-1">Other</span>
           </button>
+        </div>
+      </div>
+      <!-- Sub-Fields: Needs replacement / low stock -->
+      <div id="secNeedsReplacement" class="tab-content hidden space-y-3 pt-1">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Which van/location needs replacement?</label>
+          <select id="needsReplacementLocation" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="2015 Van">2015 Van</option>
+            <option value="2021 Van">2021 Van</option>
+            <option value="2026 Van Floor">2026 Van Floor Level</option>
+            <option value="2026 2nd Level">2026 Van 2nd Level</option>
+            <option value="2026 Van Other">2026 Van Other</option>
+          </select>
+        </div>
+        <div class="replacement-question-box p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+          <label class="block text-xs font-bold text-slate-700">Did you replace them?</label>
+          <select id="needsReplacementStatus" onchange="onNeedsReplacementChange(this.value)" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="Not replaced yet" selected>Not replaced yet</option>
+            <option value="Restocked from tool room">Restocked from Tool Room</option>
+          </select>
+          <div id="needsRestockQtyWrap" class="hidden">
+            <label class="block text-[11px] font-medium text-slate-500 mb-1">Qty restocked from Tool Room</label>
+            <div class="needs-restock-stepper">
+              <button type="button" onclick="adjustNeedsRestockQty(-1)" class="needs-restock-btn" aria-label="Decrease restocked quantity">−</button>
+              <input type="number" id="needsRestockQty" min="0" value="1" class="needs-restock-input" aria-label="Quantity restocked from Tool Room">
+              <button type="button" onclick="adjustNeedsRestockQty(1)" class="needs-restock-btn" aria-label="Increase restocked quantity">+</button>
+            </div>
+          </div>
         </div>
       </div>
       <!-- Sub-Fields: Restocked -->
@@ -356,6 +384,7 @@
           <select id="otherEventSub" onchange="onOtherEventChange(this.value)" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
             <option value="Found">Found</option>
             <option value="Disposed of">Disposed of</option>
+            <option value="Repaired">Repaired</option>
             <option value="Moved">Moved</option>
             <option value="Added/Purchased">Added/Purchased</option>
           </select>
@@ -409,7 +438,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.15.3"></script>
+  <script src="pwa.js?v=1.16"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -485,6 +514,10 @@
         });
         from.value = '';
         to.value = 'Tool Room';
+      } else if (eventName === 'Repaired') {
+        filterLocationTiles(from, function(value) { return value === 'Broken Bin'; });
+        filterLocationTiles(to, regularLocation);
+        from.value = 'Broken Bin';
       } else if (eventName === 'Moved') {
         // Generic/exception movement: intentionally expose the broad location set.
         filterLocationTiles(from, function(value) {
@@ -504,7 +537,7 @@
     }
     function initializeChoiceTiles() {
       // Employee, event, and van/location choices intentionally start blank.
-      ['whichVanRestocked', 'vanOrLocationBroke'].forEach(function(id) {
+      ['whichVanRestocked', 'vanOrLocationBroke', 'needsReplacementLocation'].forEach(function(id) {
         const select = document.getElementById(id);
         if (select) select.selectedIndex = -1;
       });
@@ -512,10 +545,10 @@
         const grid = document.createElement('div');
         grid.id = select.id + 'TileGrid';
         grid.className = 'choice-grid';
-        if (['whichVanRestocked', 'vanOrLocationBroke'].includes(select.id)) {
+        if (['whichVanRestocked', 'vanOrLocationBroke', 'needsReplacementLocation'].includes(select.id)) {
           grid.classList.add('choice-grid-3');
         }
-        if (select.id === 'didYouReplace') {
+        if (select.id === 'didYouReplace' || select.id === 'needsReplacementStatus') {
           grid.classList.add('replace-choice-grid');
         }
         if (select.id === 'transferMovedFrom') {
@@ -567,6 +600,7 @@
     }
     initializeChoiceTiles();
     onOtherEventChange(document.getElementById('otherEventSub').value);
+    onNeedsReplacementChange(document.getElementById('needsReplacementStatus').value);
 
     window.onload = async function() {
       // Start offline/PWA setup in parallel. Never make live inventory wait for it.
@@ -1164,7 +1198,7 @@
       let activeTabId = null;
       if (actionName === 'Broke, Needs replacement') activeTabId = 'tabBroke';
       else if (actionName === 'Missing, Needs replacement') activeTabId = 'tabMissing';
-      else if (actionName === 'Repaired') activeTabId = 'tabRepaired';
+      else if (actionName === 'Needs replacement') activeTabId = 'tabNeedsReplacement';
       else if (actionName === 'Restocked from tool room') activeTabId = 'tabRestock';
       else if (actionName === 'Replaced') activeTabId = 'tabTransfer';
       else if (actionName === 'Other Event (Found, Disposed, Purchased, Sold)') activeTabId = 'tabOther';
@@ -1177,8 +1211,8 @@
         document.getElementById('secRestock').classList.remove('hidden');
       } else if (actionName === 'Broke, Needs replacement' || actionName === 'Missing, Needs replacement') {
         document.getElementById('secBrokeMissing').classList.remove('hidden');
-      } else if (actionName === 'Repaired') {
-        document.getElementById('secRepaired').classList.remove('hidden');
+      } else if (actionName === 'Needs replacement') {
+        document.getElementById('secNeedsReplacement').classList.remove('hidden');
       } else if (actionName === 'Replaced') {
         document.getElementById('secTransfer').classList.remove('hidden');
       } else if (actionName === 'Other Event (Found, Disposed, Purchased, Sold)') {
@@ -1192,6 +1226,31 @@
       } else {
         splitSec.classList.add('hidden');
       }
+    }
+    function onNeedsReplacementChange(val) {
+      const wrap = document.getElementById('needsRestockQtyWrap');
+      if (val === 'Restocked from tool room') {
+        wrap.classList.remove('hidden');
+        const mainQty = Math.max(1, parseInt(document.getElementById('quantity').value, 10) || 1);
+        const input = document.getElementById('needsRestockQty');
+        if (!input.value || Number(input.value) <= 0) input.value = String(mainQty);
+      } else {
+        wrap.classList.add('hidden');
+      }
+    }
+    function adjustNeedsRestockQty(delta) {
+      const input = document.getElementById('needsRestockQty');
+      const maxQty = Math.max(1, parseInt(document.getElementById('quantity').value, 10) || 1);
+      let value = parseInt(input.value, 10);
+      if (!Number.isFinite(value)) value = maxQty;
+      value = Math.max(0, Math.min(maxQty, value + delta));
+      input.value = String(value);
+    }
+    function vanForRestockLocation(location) {
+      if (String(location).includes('2015')) return '2015 Van';
+      if (String(location).includes('2021')) return '2021 Van';
+      if (String(location).includes('2026')) return '2026 Van';
+      return '';
     }
     function adjustSplitQty(inputId, delta) {
       const input = document.getElementById(inputId);
@@ -1221,6 +1280,11 @@
         document.getElementById('whichVanRestockedTileGrid').scrollIntoView({ behavior:'smooth', block:'center' });
         return;
       }
+      if (currentAction === 'Needs replacement' && !document.getElementById('needsReplacementLocation').value) {
+        alert('Please select which van/location needs replacement.');
+        document.getElementById('needsReplacementLocationTileGrid').scrollIntoView({ behavior:'smooth', block:'center' });
+        return;
+      }
       if ((currentAction === 'Broke, Needs replacement' || currentAction === 'Missing, Needs replacement') && !document.getElementById('vanOrLocationBroke').value) {
         alert('Please select which van or location had the tool.');
         document.getElementById('vanOrLocationBrokeTileGrid').scrollIntoView({ behavior:'smooth', block:'center' });
@@ -1246,6 +1310,9 @@
         quantity: document.getElementById('quantity').value,
         notes: document.getElementById('notes').value,
         whichVanRestocked: document.getElementById('whichVanRestocked').value,
+        needsReplacementLocation: document.getElementById('needsReplacementLocation').value,
+        needsReplacementStatus: document.getElementById('needsReplacementStatus').value,
+        needsRestockQty: document.getElementById('needsRestockQty').value,
         vanOrLocationBroke: document.getElementById('vanOrLocationBroke').value,
         didYouReplace: document.getElementById('didYouReplace').value,
         qtyRepairedBin: document.getElementById('qtyRepairedBin').value,
@@ -1259,17 +1326,62 @@
       };
 
       // Keep the existing Apps Script / Google Sheet schema unchanged.
-      // Replaced is a purpose-built UI for the existing stock-transfer event.
+      // Some purpose-built UI events translate into the existing event schema.
+      let payloadsToSubmit = [payload];
+
       if (currentAction === 'Replaced') {
         payload.action = 'Moved/Transferred Stock';
+      } else if (currentAction === 'Needs replacement') {
+        const neededQty = Math.max(1, Number(payload.quantity) || 1);
+        const restockedQty = payload.needsReplacementStatus === 'Restocked from tool room'
+          ? Math.max(0, Math.min(neededQty, Number(payload.needsRestockQty) || 0))
+          : 0;
+
+        // Record the used-up / low-stock quantity as leaving the van. Using the
+        // existing Disposed-of schema preserves the current Sheet formulas without
+        // adding a new backend event type. The note makes the intent explicit.
+        const depletion = Object.assign({}, payload, {
+          action: 'Other Event (Found, Disposed, Purchased, Sold)',
+          quantity: neededQty,
+          otherEventSub: 'Disposed of',
+          otherMovedFrom: payload.needsReplacementLocation,
+          otherMovedTo: '',
+          notes: (payload.notes ? payload.notes + ' • ' : '') + 'Needs replacement'
+        });
+
+        payloadsToSubmit = [depletion];
+
+        // If it was replaced immediately, add a normal Tool Room restock as a
+        // second queued event. Partial replacement is supported.
+        if (restockedQty > 0) {
+          payloadsToSubmit.push(Object.assign({}, payload, {
+            action: 'Restocked from tool room',
+            quantity: restockedQty,
+            whichVanRestocked: vanForRestockLocation(payload.needsReplacementLocation),
+            restockTargetLocation: payload.needsReplacementLocation,
+            notes: (payload.notes ? payload.notes + ' • ' : '') + 'Replacement restock'
+          }));
+        }
       } else if (currentAction === 'Other Event (Found, Disposed, Purchased, Sold)' && payload.otherEventSub === 'Moved') {
         payload.action = 'Moved/Transferred Stock';
         payload.transferMovedFrom = payload.otherMovedFrom;
         payload.transferMovedTo = payload.otherMovedTo;
+      } else if (currentAction === 'Other Event (Found, Disposed, Purchased, Sold)' && payload.otherEventSub === 'Repaired') {
+        payload.action = 'Repaired';
+        payload.repairedMovedTo = payload.otherMovedTo;
       }
 
-      apiSubmitLog(payload)
-        .then(function(res) {
+      Promise.all(payloadsToSubmit.map(function(eventPayload) {
+        return apiSubmitLog(eventPayload);
+      }))
+        .then(function(results) {
+          const res = results[results.length - 1] || { success:false, error:'No result returned' };
+          const allSuccessful = results.every(function(result) { return result && result.success; });
+          res.success = allSuccessful;
+          res.queued = results.some(function(result) { return result && result.queued; });
+          res.syncing = results.some(function(result) { return result && result.syncing; });
+          res.item = payload.item;
+
           submitBtn.disabled = false;
           submitBtn.innerHTML = '<span>Submit Tool Event</span>';
           if (res.success) {
@@ -1334,6 +1446,11 @@
       onReplaceChange(replaced.value);
       document.getElementById('qtyRepairedBin').value = '0';
       document.getElementById('qtyClassStock').value = '0';
+      const needsStatus = document.getElementById('needsReplacementStatus');
+      needsStatus.value = 'Not replaced yet';
+      syncChoiceTiles(needsStatus);
+      onNeedsReplacementChange(needsStatus.value);
+      document.getElementById('needsRestockQty').value = '1';
     }
   </script>
 </body>

@@ -814,3 +814,63 @@ body.log-mode #syncStatusBar {
     margin-top: 12px !important;
   }
 }
+
+
+/* v1.16 — Needs replacement / low-stock event. */
+#secNeedsReplacement > div + div {
+  margin-top: 16px !important;
+}
+#secNeedsReplacement > div > label {
+  margin-bottom: 6px !important;
+}
+#needsReplacementStatusTileGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+#needsRestockQtyWrap {
+  margin-top: 9px !important;
+}
+.needs-restock-stepper {
+  display: grid;
+  grid-template-columns: 38px minmax(58px, 1fr) 38px;
+  gap: 5px;
+  align-items: center;
+}
+.needs-restock-btn {
+  width: 38px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.needs-restock-input {
+  width: 100%;
+  min-width: 58px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 800;
+  padding: 4px;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.needs-restock-input::-webkit-outer-spin-button,
+.needs-restock-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+@media (max-height: 720px) {
+  #secNeedsReplacement > div + div {
+    margin-top: 13px !important;
+  }
+}

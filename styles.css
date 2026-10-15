@@ -874,3 +874,27 @@ body.log-mode #syncStatusBar {
     margin-top: 13px !important;
   }
 }
+
+
+/* v1.17 — one smart Restock / Replace event.
+   Source choices are filtered by the selected item. */
+#tabRestockReplace {
+  min-height: 48px !important;
+}
+
+#transferMovedFromTileGrid .choice-tile[hidden] {
+  display: none !important;
+}
+
+/* One source can fill the row; two sources split it evenly. */
+#transferMovedFromTileGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+#transferMovedFromTileGrid > .choice-tile:only-child {
+  grid-column: 1 / -1;
+}
+
+/* Keep the combined-event labels comfortably separated. */
+.replaced-event-section > div + div {
+  margin-top: 16px !important;
+}

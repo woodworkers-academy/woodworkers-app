@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.16">
+  <link rel="stylesheet" href="./styles.css?v=1.17">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.16</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.17</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -247,13 +247,9 @@
             <span class="text-sm">🧰</span>
             <span class="leading-tight mt-1">Needs replacement</span>
           </button>
-          <button type="button" onclick="selectActionTab('Restocked from tool room')" id="tabRestock" title="Restocked from tool room" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
+          <button type="button" onclick="selectActionTab('Restock / Replace')" id="tabRestockReplace" title="Restock or replace an item" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
             <span class="text-sm">📦</span>
-            <span class="leading-tight mt-1">Restock</span>
-          </button>
-          <button type="button" onclick="selectActionTab('Replaced')" id="tabTransfer" title="Replaced from stock" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
-            <span class="text-sm">♻️</span>
-            <span class="leading-tight mt-1">Replaced</span>
+            <span class="leading-tight mt-1">Restock / Replace</span>
           </button>
           <button type="button" onclick="selectActionTab('Other Event (Found, Disposed, Purchased, Sold)')" id="tabOther" title="Other Event (Found, Disposed, Purchased)" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
             <span class="text-sm">📋</span>
@@ -357,17 +353,18 @@
           </select>
         </div>
       </div>
-      <!-- Sub-Fields: Replaced -->
+      <!-- Sub-Fields: Smart Restock / Replace -->
       <div id="secTransfer" class="tab-content hidden space-y-3 pt-1 replaced-event-section">
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Replacement source</label>
+          <label id="transferSourceLabel" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Source</label>
           <select id="transferMovedFrom" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="Tool Room">Tool Room</option>
             <option value="Repaired Bin">Repaired Bin</option>
             <option value="Class Stock">Class Stock</option>
           </select>
         </div>
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Replaced in</label>
+          <label id="transferDestinationLabel" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Restocked / replaced in</label>
           <select id="transferMovedTo" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
             <option value="2015 Van">2015 Van</option>
             <option value="2021 Van">2021 Van</option>
@@ -438,7 +435,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.16"></script>
+  <script src="pwa.js?v=1.17"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -454,6 +451,83 @@
 
     function isClassStockTool(itemName) {
       return classStockToolNames.has(String(itemName || '').trim().toLowerCase());
+    }
+    function classStockRowForItem(itemName) {
+      const target = String(itemName || '').trim().toLowerCase();
+      return (invCache['class'] || []).find(function(row) {
+        return String(row.tool || '').trim().toLowerCase() === target;
+      }) || null;
+    }
+
+    function exactKnownItemName(itemName) {
+      const target = String(itemName || '').trim().toLowerCase();
+      return allItems.find(function(item) {
+        return String(item || '').trim().toLowerCase() === target;
+      }) || '';
+    }
+
+    function configureRestockReplaceForItem(preferredSource) {
+      const from = document.getElementById('transferMovedFrom');
+      const to = document.getElementById('transferMovedTo');
+      const sourceLabel = document.getElementById('transferSourceLabel');
+      const destinationLabel = document.getElementById('transferDestinationLabel');
+      if (!from || !to || !document.getElementById('transferMovedFromTileGrid')) return;
+
+      const typedItem = document.getElementById('itemSearch').value;
+      const itemName = exactKnownItemName(typedItem);
+
+      // Until an exact inventory item is selected, don't guess a source.
+      if (!itemName) {
+        filterLocationTiles(from, function(value) {
+          return ['Tool Room', 'Repaired Bin', 'Class Stock'].includes(value);
+        });
+        from.selectedIndex = -1;
+        if (sourceLabel) sourceLabel.textContent = 'Source';
+        if (destinationLabel) destinationLabel.textContent = 'Restocked / replaced in';
+        syncChoiceTiles(from);
+        return;
+      }
+
+      if (!isClassStockTool(itemName)) {
+        // Consumables/materials that are not in Class Stock come from Tool Room.
+        filterLocationTiles(from, function(value) { return value === 'Tool Room'; });
+        from.value = 'Tool Room';
+        if (sourceLabel) sourceLabel.textContent = 'Source';
+        if (destinationLabel) destinationLabel.textContent = 'Restocked in';
+        syncChoiceTiles(from);
+        return;
+      }
+
+      // Class-stock tools can be replaced from Repaired Bin or Class Stock.
+      // Use current inventory to make the obvious source automatic when only
+      // one currently has stock. If both are available, let the employee choose.
+      const row = classStockRowForItem(itemName);
+      const repairedQty = row ? Math.max(0, Number(row.repairedBin) || 0) : 0;
+      const classQty = row ? Math.max(0, Number(row.classStock) || 0) : 0;
+      let visibleSources = ['Repaired Bin', 'Class Stock'];
+
+      if (repairedQty > 0 && classQty <= 0) visibleSources = ['Repaired Bin'];
+      else if (classQty > 0 && repairedQty <= 0) visibleSources = ['Class Stock'];
+
+      filterLocationTiles(from, function(value) {
+        return visibleSources.includes(value);
+      });
+
+      const preferred = preferredSource && visibleSources.includes(preferredSource)
+        ? preferredSource
+        : null;
+
+      if (preferred) {
+        from.value = preferred;
+      } else if (visibleSources.length === 1) {
+        from.value = visibleSources[0];
+      } else {
+        from.selectedIndex = -1;
+      }
+
+      if (sourceLabel) sourceLabel.textContent = 'Replacement source';
+      if (destinationLabel) destinationLabel.textContent = 'Replaced in';
+      syncChoiceTiles(from);
     }
     let currentSelectedBin = 'ALL';
     let invCache = {};
@@ -889,25 +963,15 @@
       if (notesDetails) notesDetails.open = false;
       document.getElementById('successBox').classList.add('hidden');
 
-      if (source === 'Tool Room') {
-        selectActionTab('Restocked from tool room');
-        const van = currentInvTab === '2015' ? '2015 Van' : (currentInvTab === '2021' ? '2021 Van' : '2026 Van');
-        setChoiceValue('whichVanRestocked', van);
-      } else {
-        selectActionTab('Replaced');
-        setChoiceValue('transferMovedFrom', source);
-        setChoiceValue('transferMovedTo', destination);
-      }
+      selectActionTab('Restock / Replace');
+      configureRestockReplaceForItem(source);
+      setChoiceValue('transferMovedFrom', source);
+      setChoiceValue('transferMovedTo', destination);
 
       clearEmployeeForQuickFill();
       const notice = document.getElementById('quickFillNotice');
       const noticeText = document.getElementById('quickFillNoticeText');
-      if (source === 'Tool Room') {
-        const van = currentInvTab === '2015' ? '2015 Van' : (currentInvTab === '2021' ? '2021 Van' : '2026 Van');
-        noticeText.textContent = 'Restock ready: ' + entry.item.item + ' × ' + qty + ' • Tool Room → ' + van + '. Select your name and submit.';
-      } else {
-        noticeText.textContent = 'Replacement ready: ' + entry.item.item + ' × ' + qty + ' • ' + source + ' → ' + destination + '. Select your name and submit.';
-      }
+      noticeText.textContent = 'Restock/replace ready: ' + entry.item.item + ' × ' + qty + ' • ' + source + ' → ' + destination + '. Select your name and submit.';
       notice.classList.remove('hidden');
       switchTopMode('log');
       // Quick-fill should always open at the very top of the Log Tool Event page
@@ -1152,6 +1216,10 @@
     }
     // LOGGER AUTOCOMPLETE & SUBMIT LOGIC
     function onSearchInput(val) {
+      if (currentAction === 'Restock / Replace') {
+        // Reconfigure only from exact matches; partial text stays unselected.
+        setTimeout(function() { configureRestockReplaceForItem(); }, 0);
+      }
       const list = document.getElementById('autocompleteList');
       const clearBtn = document.getElementById('clearBtn');
       list.innerHTML = '';
@@ -1175,6 +1243,9 @@
         itemDiv.onclick = function() {
           document.getElementById('itemSearch').value = item;
           list.classList.add('hidden');
+          if (currentAction === 'Restock / Replace') {
+            configureRestockReplaceForItem();
+          }
         };
         list.appendChild(itemDiv);
       });
@@ -1184,6 +1255,7 @@
       document.getElementById('itemSearch').value = '';
       document.getElementById('autocompleteList').classList.add('hidden');
       document.getElementById('clearBtn').classList.add('hidden');
+      if (currentAction === 'Restock / Replace') configureRestockReplaceForItem();
     }
     document.addEventListener('click', function(e) {
       if (!e.target.closest('#itemSearch') && !e.target.closest('#autocompleteList')) {
@@ -1199,22 +1271,20 @@
       if (actionName === 'Broke, Needs replacement') activeTabId = 'tabBroke';
       else if (actionName === 'Missing, Needs replacement') activeTabId = 'tabMissing';
       else if (actionName === 'Needs replacement') activeTabId = 'tabNeedsReplacement';
-      else if (actionName === 'Restocked from tool room') activeTabId = 'tabRestock';
-      else if (actionName === 'Replaced') activeTabId = 'tabTransfer';
+      else if (actionName === 'Restock / Replace') activeTabId = 'tabRestockReplace';
       else if (actionName === 'Other Event (Found, Disposed, Purchased, Sold)') activeTabId = 'tabOther';
       const activeBtn = document.getElementById(activeTabId);
       if (activeBtn) {
         activeBtn.className = 'action-tab p-3 rounded-xl border-2 border-indigo-600 bg-indigo-50 text-indigo-700 flex flex-col justify-between shadow-xs font-bold text-left min-h-[66px]';
       }
       document.querySelectorAll('.tab-content').forEach(sec => sec.classList.add('hidden'));
-      if (actionName === 'Restocked from tool room') {
-        document.getElementById('secRestock').classList.remove('hidden');
-      } else if (actionName === 'Broke, Needs replacement' || actionName === 'Missing, Needs replacement') {
+      if (actionName === 'Broke, Needs replacement' || actionName === 'Missing, Needs replacement') {
         document.getElementById('secBrokeMissing').classList.remove('hidden');
       } else if (actionName === 'Needs replacement') {
         document.getElementById('secNeedsReplacement').classList.remove('hidden');
-      } else if (actionName === 'Replaced') {
+      } else if (actionName === 'Restock / Replace') {
         document.getElementById('secTransfer').classList.remove('hidden');
+        configureRestockReplaceForItem();
       } else if (actionName === 'Other Event (Found, Disposed, Purchased, Sold)') {
         document.getElementById('secOther').classList.remove('hidden');
       }
@@ -1275,11 +1345,6 @@
         document.getElementById('actionTileGrid').scrollIntoView({ behavior:'smooth', block:'center' });
         return;
       }
-      if (currentAction === 'Restocked from tool room' && !document.getElementById('whichVanRestocked').value) {
-        alert('Please select which van was restocked.');
-        document.getElementById('whichVanRestockedTileGrid').scrollIntoView({ behavior:'smooth', block:'center' });
-        return;
-      }
       if (currentAction === 'Needs replacement' && !document.getElementById('needsReplacementLocation').value) {
         alert('Please select which van/location needs replacement.');
         document.getElementById('needsReplacementLocationTileGrid').scrollIntoView({ behavior:'smooth', block:'center' });
@@ -1290,8 +1355,8 @@
         document.getElementById('vanOrLocationBrokeTileGrid').scrollIntoView({ behavior:'smooth', block:'center' });
         return;
       }
-      if (currentAction === 'Replaced' && (!document.getElementById('transferMovedFrom').value || !document.getElementById('transferMovedTo').value)) {
-        alert('Please select the replacement source and van location.');
+      if (currentAction === 'Restock / Replace' && (!document.getElementById('transferMovedFrom').value || !document.getElementById('transferMovedTo').value)) {
+        alert('Please select the source and van location.');
         document.getElementById('transferMovedFromTileGrid').scrollIntoView({ behavior:'smooth', block:'center' });
         return;
       }
@@ -1329,8 +1394,14 @@
       // Some purpose-built UI events translate into the existing event schema.
       let payloadsToSubmit = [payload];
 
-      if (currentAction === 'Replaced') {
-        payload.action = 'Moved/Transferred Stock';
+      if (currentAction === 'Restock / Replace') {
+        if (payload.transferMovedFrom === 'Tool Room') {
+          payload.action = 'Restocked from tool room';
+          payload.whichVanRestocked = vanForRestockLocation(payload.transferMovedTo);
+          payload.restockTargetLocation = payload.transferMovedTo;
+        } else {
+          payload.action = 'Moved/Transferred Stock';
+        }
       } else if (currentAction === 'Needs replacement') {
         const neededQty = Math.max(1, Number(payload.quantity) || 1);
         const restockedQty = payload.needsReplacementStatus === 'Restocked from tool room'

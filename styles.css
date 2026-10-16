@@ -935,3 +935,8 @@ body.log-mode #syncStatusBar {
 .attention-card[data-van="2021"]{--tile-bg:#fef2f2;--tile-border:#fca5a5;--tile-text:#991b1b;--tile-active:#b91c1c}
 .attention-card[data-van="2015"]{--tile-bg:#fefce8;--tile-border:#fde047;--tile-text:#854d0e;--tile-active:#a16207}
 @media(max-width:370px){.attention-action-row{grid-template-columns:96px minmax(0,1fr);gap:5px}.attention-mini-stepper{grid-template-columns:26px minmax(36px,1fr) 26px}.attention-action-button{font-size:10px;padding-left:5px;padding-right:5px}}
+
+
+/* v1.19.1 — Needs Attention actions depend on item category. */
+.attention-action-row-single { display:block; }
+.attention-action-button-full { width:100%; min-height:36px; font-size:11px; }

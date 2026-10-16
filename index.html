@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.19">
+  <link rel="stylesheet" href="./styles.css?v=1.19.1">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.19</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.19.1</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -435,7 +435,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.19"></script>
+  <script src="pwa.js?v=1.19.1"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -1282,32 +1282,62 @@
       row.append(stepper, button);
       return row;
     }
+    function buildAlertActionButtonOnly(buttonText, clickHandler) {
+      const row = document.createElement('div');
+      row.className = 'attention-action-row attention-action-row-single';
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'attention-action-button attention-action-button-full';
+      button.textContent = buttonText;
+      button.addEventListener('click', clickHandler);
+
+      row.appendChild(button);
+      return row;
+    }
+
     function buildReplacementShortcutControls(entry) {
       const wrap = document.createElement('div');
       wrap.className = 'replacement-shortcut attention-actions';
+
       const heading = document.createElement('div');
       heading.className = 'replacement-shortcut-title';
       heading.textContent = 'Resolve shortage';
       wrap.appendChild(heading);
-      wrap.appendChild(buildAlertActionRow(entry, 'Replaced from Repaired Bin', function(qty) {
-        prepareReplacementFromAlert(entry, 'Repaired Bin', qty);
-      }));
-      wrap.appendChild(buildAlertActionRow(entry, 'Replaced from Class Stock', function(qty) {
-        prepareReplacementFromAlert(entry, 'Class Stock', qty);
-      }));
-      wrap.appendChild(buildAlertActionRow(entry, 'Found', function(qty) {
-        prepareFoundFromAlert(entry, qty);
-      }));
-      if (!isClassStockTool(entry.item.item)) {
-        const statusItem = isReplenishmentStatusItem(entry.item.item);
-        wrap.appendChild(buildAlertActionRow(
-          entry,
-          statusItem ? 'Replenished from Tool Room' : 'Restocked from Tool Room',
-          function(qty) { prepareReplacementFromAlert(entry, 'Tool Room', qty); }
-        ));
+
+      const itemName = entry.item.item;
+
+      // Replenishment-status supplies are simple 1/0 status items.
+      // They only need one action and no quantity picker.
+      if (isReplenishmentStatusItem(itemName)) {
+        wrap.appendChild(buildAlertActionButtonOnly('Replenished', function() {
+          prepareReplacementFromAlert(entry, 'Tool Room', 1);
+        }));
+        return wrap;
       }
+
+      // Items carried in Class Stock can be resolved in only these three ways.
+      if (isClassStockTool(itemName)) {
+        wrap.appendChild(buildAlertActionRow(entry, 'Replaced from Repaired Bin', function(qty) {
+          prepareReplacementFromAlert(entry, 'Repaired Bin', qty);
+        }));
+        wrap.appendChild(buildAlertActionRow(entry, 'Replaced from Class Stock', function(qty) {
+          prepareReplacementFromAlert(entry, 'Class Stock', qty);
+        }));
+        wrap.appendChild(buildAlertActionRow(entry, 'Found', function(qty) {
+          prepareFoundFromAlert(entry, qty);
+        }));
+        return wrap;
+      }
+
+      // Everything else is a Misc item. Misc shortages are resolved only by
+      // restocking from the Tool Room.
+      wrap.appendChild(buildAlertActionRow(entry, 'Restocked from Tool Room', function(qty) {
+        prepareReplacementFromAlert(entry, 'Tool Room', qty);
+      }));
       return wrap;
     }
+
     function buildBaselineAlertCard(entry, van, compact) {
       const card = document.createElement('div');
       card.className = compact ? 'attention-card attention-card-compact' : 'attention-card';

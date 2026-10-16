@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.19.2">
+  <link rel="stylesheet" href="./styles.css?v=1.19.3">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.19.2</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.19.3</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -435,7 +435,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.19.2"></script>
+  <script src="pwa.js?v=1.19.3"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -619,7 +619,7 @@
       const needsLabel = document.getElementById('tabNeedsReplacementLabel');
       const restockLabel = document.getElementById('tabRestockReplaceLabel');
       if (needsLabel) needsLabel.textContent = statusItem ? 'Needs replenish' : 'Needs replacement';
-      if (restockLabel) restockLabel.textContent = statusItem ? 'Replenish' : 'Restock / Replace';
+      if (restockLabel) restockLabel.textContent = statusItem ? 'Replenished' : 'Restocked / Replaced';
 
       if (currentAction === 'Needs replacement') {
         setStatusQuantityMode(statusItem);
@@ -1850,6 +1850,9 @@
               delete invCache['summary'];
               delete invCache['class'];
             }
+            // Return the Log Tool Event form to a fresh blank state immediately
+            // after a successful save, while leaving the success confirmation visible.
+            resetForm(true);
             window.scrollTo({ top: 0, behavior: 'smooth' });
           } else {
             alert('Error saving: ' + res.error);
@@ -1861,41 +1864,68 @@
           alert('Could not save locally: ' + err.message);
         });
     }
-    function resetForm() {
-      // Start a fresh tool event while keeping the employee and location choices
-      // from the previous entry. This makes it faster to log several tools from
-      // the same class/van without reselecting the same person and location.
+    function resetForm(preserveSuccess) {
+      // Return the Log Tool Event form to a fresh blank state.
+      document.getElementById('employee').value = '';
+      document.querySelectorAll('.employee-tile').forEach(function(button) {
+        button.className = 'employee-tile choice-tile';
+        button.setAttribute('aria-pressed', 'false');
+      });
+
       document.getElementById('itemSearch').value = '';
       document.getElementById('quantity').value = '1';
       setStatusQuantityMode(false);
       document.getElementById('notes').value = '';
-      const notesDetails = document.getElementById('notesDetails');
-      if (notesDetails) notesDetails.open = false;
-      document.getElementById('successBox').classList.add('hidden');
       document.getElementById('quickFillNotice').classList.add('hidden');
       document.getElementById('clearBtn').classList.add('hidden');
+      document.getElementById('autocompleteList').classList.add('hidden');
 
-      // Reset the event itself, but intentionally preserve employee and all
-      // van/location selections from the last submitted entry.
+      if (!preserveSuccess) {
+        document.getElementById('successBox').classList.add('hidden');
+      }
+
+      // Clear the selected main event and hide all event-specific fields.
       currentAction = '';
       document.querySelectorAll('.action-tab').forEach(function(tab) {
         tab.className = 'action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]';
+        tab.setAttribute('aria-pressed', 'false');
       });
-      document.querySelectorAll('.tab-content').forEach(function(sec) { sec.classList.add('hidden'); });
+      document.querySelectorAll('.tab-content').forEach(function(sec) {
+        sec.classList.add('hidden');
+      });
 
-      // Replacement details belong to the prior event, so return this question
-      // to its neutral state even though the van/location selection is retained.
+      // Clear location/source selections that should start fresh on each event.
+      [
+        'whichVanRestocked',
+        'needsReplacementLocation',
+        'vanOrLocationBroke',
+        'repairedMovedTo',
+        'transferMovedFrom',
+        'transferMovedTo'
+      ].forEach(function(id) {
+        const select = document.getElementById(id);
+        if (!select) return;
+        select.selectedIndex = -1;
+        syncChoiceTiles(select);
+      });
+
+      // Return replacement questions to their neutral defaults.
       const replaced = document.getElementById('didYouReplace');
       replaced.value = 'No replacement available';
       syncChoiceTiles(replaced);
       onReplaceChange(replaced.value);
+
       document.getElementById('qtyRepairedBin').value = '0';
       document.getElementById('qtyClassStock').value = '0';
+
       const needsStatus = document.getElementById('needsReplacementStatus');
       needsStatus.value = 'Not replaced yet';
       syncChoiceTiles(needsStatus);
       onNeedsReplacementChange(needsStatus.value);
       document.getElementById('needsRestockQty').value = '1';
+
+      // Restore the default visible wording for an empty form.
+      configureSelectedItemMode();
     }
   </script>
 </body>

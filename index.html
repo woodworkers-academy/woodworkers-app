@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.18.1">
+  <link rel="stylesheet" href="./styles.css?v=1.19">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.18.1</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.19</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -85,6 +85,9 @@
   <div id="inventoryContainer" class="hidden max-w-md w-full mx-auto p-4 flex-1 space-y-3">
     <!-- Sub-Tabs for Inventory Locations -->
     <div class="flex overflow-x-auto gap-1.5 pb-1 text-xs font-semibold scrollbar-none">
+      <button onclick="loadInventoryTab('attention')" id="invTabAttention" class="inv-tab-btn shrink-0 px-3 py-2 rounded-xl bg-white text-slate-700 border border-slate-200">
+        ⚠️ Needs Attention
+      </button>
       <button onclick="loadInventoryTab('2026')" id="invTab2026" class="inv-tab-btn shrink-0 px-3 py-2 rounded-xl bg-indigo-600 text-white shadow-xs">
         🚐 2026 Van
       </button>
@@ -97,9 +100,6 @@
       <button onclick="loadInventoryTab('class')" id="invTabClass" class="inv-tab-btn shrink-0 px-3 py-2 rounded-xl bg-white text-slate-700 border border-slate-200">
         🛠️ Class Stock
       </button>
-      <button onclick="loadInventoryTab('summary')" id="invTabSummary" class="inv-tab-btn shrink-0 px-3 py-2 rounded-xl bg-white text-slate-700 border border-slate-200">
-        📊 Tool Summary
-      </button>
     </div>
     <!-- Whole-van discrepancies, independent of bin/search filters -->
     <section id="baselineAlerts" class="hidden rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 space-y-3" aria-label="Items outside baseline quantities" aria-live="polite">
@@ -110,7 +110,7 @@
       <div id="baselineAlertsList" class="space-y-2"></div>
     </section>
     <!-- Inventory Filter & Search Bar -->
-    <div class="relative">
+    <div id="inventorySearchSection" class="relative">
       <input 
         type="text" 
         id="invSearch" 
@@ -435,12 +435,12 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.18.1"></script>
+  <script src="pwa.js?v=1.19"></script>
   <script>
     let allItems = [];
     let currentAction = '';
     let currentTopMode = 'log'; // 'log' | 'inventory'
-    let currentInvTab = '2026'; // '2026' | '2021' | '2015' | 'class' | 'summary'
+    let currentInvTab = '2026'; // 'attention' | '2026' | '2021' | '2015' | 'class'
     let classStockToolNames = new Set();
 
     function updateClassStockToolNames(rows) {
@@ -677,12 +677,16 @@
       }
 
       if (!isClassStockTool(itemName)) {
-        // Consumables/materials that are not in Class Stock come from Tool Room.
-        filterLocationTiles(from, function(value) { return value === 'Tool Room'; });
-        from.value = 'Tool Room';
+        const chosenSource = ['Repaired Bin', 'Class Stock', 'Tool Room'].includes(preferredSource)
+          ? preferredSource
+          : 'Tool Room';
+        filterLocationTiles(from, function(value) { return value === chosenSource; });
+        from.value = chosenSource;
         const statusItem = isReplenishmentStatusItem(itemName);
-        if (sourceLabel) sourceLabel.textContent = 'Source';
-        if (destinationLabel) destinationLabel.textContent = statusItem ? 'Replenished in' : 'Restocked in';
+        if (sourceLabel) sourceLabel.textContent = chosenSource === 'Tool Room' ? 'Source' : 'Replacement source';
+        if (destinationLabel) destinationLabel.textContent = chosenSource === 'Tool Room'
+          ? (statusItem ? 'Replenished in' : 'Restocked in')
+          : 'Replaced in';
         syncChoiceTiles(from);
         return;
       }
@@ -932,6 +936,10 @@
         activeBtn.setAttribute('aria-pressed', 'true');
         activeBtn.className = 'inv-tab-btn shrink-0 px-3 py-2 rounded-xl bg-indigo-600 text-white shadow-xs font-bold';
       }
+      if (tabKey === 'attention') {
+        loadAllAttentionInventory();
+        return;
+      }
       if (invCache[tabKey]) {
         renderBinTiles();
         renderFilteredInventory();
@@ -940,13 +948,46 @@
         fetchInventoryFromSheet(tabKey);
       }
     }
+
+    function loadAllAttentionInventory() {
+      const tabs = ['2015', '2021', '2026'];
+      const loader = document.getElementById('invLoading');
+      const haveAll = tabs.every(function(tab) { return Array.isArray(invCache[tab]); });
+      if (haveAll) {
+        loader.classList.add('hidden');
+        renderBinTiles();
+        renderFilteredInventory();
+        tabs.forEach(function(tab) { refreshInventorySilently(tab); });
+        return;
+      }
+      document.getElementById('baselineAlerts').classList.add('hidden');
+      document.getElementById('invCardsList').classList.add('hidden');
+      document.getElementById('inventorySearchSection').classList.add('hidden');
+      document.getElementById('binTilesSection').classList.add('hidden');
+      document.getElementById('activeBinHeader').classList.add('hidden');
+      loader.classList.remove('hidden');
+      Promise.all(tabs.map(function(tab) {
+        return apiGetInventory(tab).then(function(rows) { invCache[tab] = rows; });
+      })).then(function() {
+        loader.classList.add('hidden');
+        if (currentInvTab === 'attention') {
+          renderBinTiles();
+          renderFilteredInventory();
+        }
+      }).catch(function(err) {
+        loader.classList.add('hidden');
+        const list = document.getElementById('invCardsList');
+        list.classList.remove('hidden');
+        list.innerHTML = '<div class="p-4 bg-red-50 text-red-600 text-xs rounded-xl text-center">Failed to load all vans: ' + err.message + '</div>';
+      });
+    }
     function refreshInventorySilently(tabKey) {
       if (navigator.onLine === false) return;
       apiGetInventory(tabKey)
         .then(function(res) {
           invCache[tabKey] = res;
           if (tabKey === 'class') updateClassStockToolNames(res);
-          if (currentTopMode === 'inventory' && currentInvTab === tabKey) {
+          if (currentTopMode === 'inventory' && (currentInvTab === tabKey || currentInvTab === 'attention')) {
             renderBinTiles();
             renderFilteredInventory();
           }
@@ -957,8 +998,13 @@
     }
     function refreshActiveView() {
       if (currentTopMode === 'inventory') {
-        delete invCache[currentInvTab];
-        fetchInventoryFromSheet(currentInvTab);
+        if (currentInvTab === 'attention') {
+          ['2015', '2021', '2026'].forEach(function(tab) { delete invCache[tab]; });
+          loadAllAttentionInventory();
+        } else {
+          delete invCache[currentInvTab];
+          fetchInventoryFromSheet(currentInvTab);
+        }
       } else {
         apiGetToolItems()
           .then(function(items) { allItems = items; })
@@ -1119,13 +1165,17 @@
       });
     }
     function replacementDestinationForAlert(entry) {
-      if (currentInvTab === '2015') return '2015 Van';
-      if (currentInvTab === '2021') return '2021 Van';
-      if (currentInvTab !== '2026') return '';
+      const van = String(entry.van || currentInvTab);
+      if (van === '2015') return '2015 Van';
+      if (van === '2021') return '2021 Van';
+      if (van !== '2026') return '';
       const locationText = ((entry.item.area || '') + ' ' + (entry.item.bin || '')).toLowerCase();
       if (locationText.includes('floor') || locationText.includes('bottom')) return '2026 Van Floor Level';
       if (locationText.includes('2nd') || locationText.includes('second') || locationText.includes('middle')) return '2026 Van 2nd Level';
       return '2026 Van Other';
+    }
+    function vanDisplayName(van) {
+      return String(van) + ' Van';
     }
     function setChoiceValue(selectId, value) {
       const select = document.getElementById(selectId);
@@ -1149,164 +1199,230 @@
       document.getElementById('clearBtn').classList.remove('hidden');
       document.getElementById('quantity').value = String(qty);
       document.getElementById('notes').value = '';
-      const notesDetails = document.getElementById('notesDetails');
-      if (notesDetails) notesDetails.open = false;
       document.getElementById('successBox').classList.add('hidden');
-
       selectActionTab('Restock / Replace');
       configureRestockReplaceForItem(source);
       setChoiceValue('transferMovedFrom', source);
       setChoiceValue('transferMovedTo', destination);
-
       clearEmployeeForQuickFill();
       const notice = document.getElementById('quickFillNotice');
       const noticeText = document.getElementById('quickFillNoticeText');
-      noticeText.textContent = (statusItem ? 'Replenishment ready: ' : 'Restock/replace ready: ')
-        + entry.item.item + ' × ' + (statusItem ? 1 : qty) + ' • ' + source + ' → ' + destination
-        + '. Select your name and submit.';
+      let actionWord = 'Replacement';
+      if (source === 'Tool Room') actionWord = statusItem ? 'Replenishment' : 'Restock';
+      noticeText.textContent = actionWord + ' ready: ' + entry.item.item + ' × ' + qty
+        + ' • ' + source + ' → ' + destination + '. Select your name and submit.';
       notice.classList.remove('hidden');
       switchTopMode('log');
-      // Quick-fill should always open at the very top of the Log Tool Event page
-      // so the employee choices are immediately visible.
-      requestAnimationFrame(function() {
-        window.scrollTo(0, 0);
-      });
+      requestAnimationFrame(function() { window.scrollTo(0, 0); });
     }
-    function buildReplacementShortcutControls(entry) {
+    function prepareFoundFromAlert(entry, quantity) {
+      const destination = replacementDestinationForAlert(entry);
+      const qty = isReplenishmentStatusItem(entry.item.item)
+        ? 1
+        : Math.max(1, Math.min(Number(quantity) || 1, Math.max(1, -entry.difference)));
+      document.getElementById('itemSearch').value = entry.item.item;
+      document.getElementById('clearBtn').classList.remove('hidden');
+      document.getElementById('quantity').value = String(qty);
+      document.getElementById('notes').value = '';
+      document.getElementById('successBox').classList.add('hidden');
+      selectActionTab('Other Event (Found, Disposed, Purchased, Sold)');
+      setChoiceValue('otherEventSub', 'Found');
+      setChoiceValue('otherMovedTo', destination);
+      clearEmployeeForQuickFill();
+      const notice = document.getElementById('quickFillNotice');
+      const noticeText = document.getElementById('quickFillNoticeText');
+      noticeText.textContent = 'Found ready: ' + entry.item.item + ' × ' + qty
+        + ' • Missing → ' + destination + '. Select your name and submit.';
+      notice.classList.remove('hidden');
+      switchTopMode('log');
+      requestAnimationFrame(function() { window.scrollTo(0, 0); });
+    }
+    function buildAlertActionRow(entry, buttonText, clickHandler) {
       const needed = Math.max(1, -entry.difference);
-      const wrap = document.createElement('div');
-      wrap.className = 'replacement-shortcut';
-
-      const heading = document.createElement('div');
-      heading.className = 'replacement-shortcut-title';
-      heading.textContent = isReplenishmentStatusItem(entry.item.item) ? 'Log replenishment' : 'Log replacement';
-      wrap.appendChild(heading);
-
-      const quantityRow = document.createElement('div');
-      quantityRow.className = 'replacement-qty-row';
-      const quantityLabel = document.createElement('span');
-      quantityLabel.className = 'replacement-qty-label';
-      quantityLabel.textContent = 'Quantity';
+      const statusItem = isReplenishmentStatusItem(entry.item.item);
+      const row = document.createElement('div');
+      row.className = 'attention-action-row';
+      const stepper = document.createElement('div');
+      stepper.className = 'attention-mini-stepper';
       const minus = document.createElement('button');
       minus.type = 'button';
-      minus.className = 'replacement-qty-button';
+      minus.className = 'attention-mini-qty-btn';
       minus.textContent = '−';
       const input = document.createElement('input');
       input.type = 'number';
       input.min = '1';
-      input.max = String(needed);
-      input.value = String(needed);
-      input.className = 'replacement-qty-input';
-      input.setAttribute('aria-label', 'Replacement quantity for ' + entry.item.item);
+      input.max = String(statusItem ? 1 : needed);
+      input.value = String(statusItem ? 1 : needed);
+      input.className = 'attention-mini-qty-input';
+      input.setAttribute('aria-label', buttonText + ' quantity for ' + entry.item.item);
       const plus = document.createElement('button');
       plus.type = 'button';
-      plus.className = 'replacement-qty-button';
+      plus.className = 'attention-mini-qty-btn';
       plus.textContent = '+';
-      function clampQuantity(value) {
-        const next = Math.max(1, Math.min(needed, Number(value) || 1));
+      function setClamped(value) {
+        const max = statusItem ? 1 : needed;
+        const next = Math.max(1, Math.min(max, Number(value) || 1));
         input.value = String(next);
         return next;
       }
-      minus.addEventListener('click', function() { clampQuantity(Number(input.value) - 1); });
-      plus.addEventListener('click', function() { clampQuantity(Number(input.value) + 1); });
-      input.addEventListener('change', function() { clampQuantity(input.value); });
-      quantityRow.append(quantityLabel, minus, input, plus);
-      const statusItem = isReplenishmentStatusItem(entry.item.item);
-      if (!statusItem) wrap.appendChild(quantityRow);
-      else input.value = '1';
-
-      const buttons = document.createElement('div');
-      buttons.className = 'replacement-source-grid';
-      const sourceOptions = isClassStockTool(entry.item.item)
-        ? [
-            ['Repaired Bin', 'Replaced from Repaired Bin'],
-            ['Class Stock', 'Replaced from Class Stock']
-          ]
-        : [
-            ['Tool Room', statusItem ? 'Replenished from Tool Room' : 'Restocked from Tool Room']
-          ];
-      sourceOptions.forEach(function(pair) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'replacement-source-button';
-        button.textContent = pair[1];
-        button.addEventListener('click', function() {
-          prepareReplacementFromAlert(entry, pair[0], clampQuantity(input.value));
-        });
-        buttons.appendChild(button);
-      });
-      wrap.appendChild(buttons);
+      if (statusItem) {
+        minus.disabled = true;
+        plus.disabled = true;
+      } else {
+        minus.addEventListener('click', function() { setClamped(Number(input.value) - 1); });
+        plus.addEventListener('click', function() { setClamped(Number(input.value) + 1); });
+      }
+      input.addEventListener('change', function() { setClamped(input.value); });
+      stepper.append(minus, input, plus);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'attention-action-button';
+      button.textContent = buttonText;
+      button.addEventListener('click', function() { clickHandler(setClamped(input.value)); });
+      row.append(stepper, button);
+      return row;
+    }
+    function buildReplacementShortcutControls(entry) {
+      const wrap = document.createElement('div');
+      wrap.className = 'replacement-shortcut attention-actions';
+      const heading = document.createElement('div');
+      heading.className = 'replacement-shortcut-title';
+      heading.textContent = 'Resolve shortage';
+      wrap.appendChild(heading);
+      wrap.appendChild(buildAlertActionRow(entry, 'Replaced from Repaired Bin', function(qty) {
+        prepareReplacementFromAlert(entry, 'Repaired Bin', qty);
+      }));
+      wrap.appendChild(buildAlertActionRow(entry, 'Replaced from Class Stock', function(qty) {
+        prepareReplacementFromAlert(entry, 'Class Stock', qty);
+      }));
+      wrap.appendChild(buildAlertActionRow(entry, 'Found', function(qty) {
+        prepareFoundFromAlert(entry, qty);
+      }));
+      if (!isClassStockTool(entry.item.item)) {
+        const statusItem = isReplenishmentStatusItem(entry.item.item);
+        wrap.appendChild(buildAlertActionRow(
+          entry,
+          statusItem ? 'Replenished from Tool Room' : 'Restocked from Tool Room',
+          function(qty) { prepareReplacementFromAlert(entry, 'Tool Room', qty); }
+        ));
+      }
       return wrap;
+    }
+    function buildBaselineAlertCard(entry, van, compact) {
+      const card = document.createElement('div');
+      card.className = compact ? 'attention-card attention-card-compact' : 'attention-card';
+      card.dataset.van = van;
+      const top = document.createElement('div');
+      top.className = 'attention-card-top';
+      const titleWrap = document.createElement('div');
+      titleWrap.className = 'min-w-0';
+      const title = document.createElement('h3');
+      title.className = 'attention-tool-name';
+      title.textContent = entry.item.item;
+      titleWrap.appendChild(title);
+      const location = document.createElement('p');
+      location.className = 'attention-location';
+      location.textContent = formatLocation(entry.item.area, entry.item.bin) || 'Location unspecified';
+      titleWrap.appendChild(location);
+      const vanBadge = document.createElement('span');
+      vanBadge.className = 'attention-van-badge';
+      vanBadge.textContent = vanDisplayName(van);
+      top.append(titleWrap, vanBadge);
+      card.appendChild(top);
+      const meta = document.createElement('div');
+      meta.className = 'attention-meta-line';
+      const current = document.createElement('span');
+      current.innerHTML = 'Current <strong>' + entry.current + '</strong>';
+      const baseline = document.createElement('span');
+      baseline.innerHTML = 'Baseline <strong>' + entry.baseline + '</strong>';
+      const status = document.createElement('span');
+      status.className = entry.difference < 0 ? 'attention-status-short' : 'attention-status-high';
+      status.textContent = entry.difference < 0
+        ? (isReplenishmentStatusItem(entry.item.item) ? 'Needs replenishing' : (-entry.difference) + ' needed')
+        : '+' + entry.difference + ' above baseline';
+      meta.append(current, baseline, status);
+      card.appendChild(meta);
+      const note = document.createElement('p');
+      note.className = 'attention-note';
+      note.textContent = 'Notes: ' + (String(entry.item.notes || '').trim() || 'None');
+      card.appendChild(note);
+      if (entry.difference < 0) {
+        const actionEntry = Object.assign({}, entry, { van: van });
+        card.appendChild(buildReplacementShortcutControls(actionEntry));
+      }
+      return card;
     }
     function renderBaselineAlerts() {
       const section = document.getElementById('baselineAlerts');
       const list = document.getElementById('baselineAlertsList');
       list.replaceChildren();
-      if (!['2015', '2021', '2026'].includes(currentInvTab) || !invCache[currentInvTab]) {
+      section.classList.remove('all-vans-attention');
+      let entries = [];
+      let compact = false;
+      if (currentInvTab === 'attention') {
+        compact = true;
+        section.classList.add('all-vans-attention');
+        ['2026', '2021', '2015'].forEach(function(van) {
+          const rows = invCache[van];
+          if (!Array.isArray(rows)) return;
+          getBaselineDiscrepancies(rows).forEach(function(entry) {
+            entries.push(Object.assign({}, entry, { van: van }));
+          });
+        });
+      } else if (['2015', '2021', '2026'].includes(currentInvTab) && invCache[currentInvTab]) {
+        entries = getBaselineDiscrepancies(invCache[currentInvTab]).map(function(entry) {
+          return Object.assign({}, entry, { van: currentInvTab });
+        });
+      } else {
         section.classList.add('hidden');
         return;
       }
-      const entries = getBaselineDiscrepancies(invCache[currentInvTab]);
       if (!entries.length) {
-        section.classList.add('hidden');
+        if (currentInvTab === 'attention') {
+          document.getElementById('baselineAlertsTitle').textContent = '✅ All vans — nothing needs attention';
+          document.getElementById('baselineAlertsSummary').textContent = 'All tracked van quantities are at baseline.';
+          section.classList.remove('hidden');
+        } else {
+          section.classList.add('hidden');
+        }
         return;
       }
+      const order = { '2026': 0, '2021': 1, '2015': 2 };
+      entries.sort(function(a, b) {
+        const shortageOrder = (a.difference < 0 ? 0 : 1) - (b.difference < 0 ? 0 : 1);
+        if (shortageOrder) return shortageOrder;
+        return (order[a.van] || 0) - (order[b.van] || 0);
+      });
       const shortages = entries.filter(function(entry) { return entry.difference < 0; });
       const needed = shortages.reduce(function(total, entry) { return total - entry.difference; }, 0);
       const excess = entries.length - shortages.length;
-      document.getElementById('baselineAlertsTitle').textContent = '⚠️ ' + currentInvTab + ' Van — Inventory needs attention';
-      document.getElementById('baselineAlertsSummary').textContent = shortages.length + ' shortage entries · ' + needed + ' units needed' + (excess ? ' · ' + excess + ' above-baseline entries' : '');
+      document.getElementById('baselineAlertsTitle').textContent = currentInvTab === 'attention'
+        ? '⚠️ All Vans — Inventory needs attention'
+        : '⚠️ ' + currentInvTab + ' Van — Inventory needs attention';
+      document.getElementById('baselineAlertsSummary').textContent = shortages.length + ' shortage entries · ' + needed + ' units needed'
+        + (excess ? ' · ' + excess + ' above-baseline entries' : '');
       entries.forEach(function(entry) {
-        const card = document.createElement('div');
-        card.className = 'rounded-xl border border-amber-200 bg-white p-3 space-y-2';
-        const title = document.createElement('h3');
-        title.className = 'text-xl font-extrabold leading-tight text-slate-900';
-        title.textContent = entry.item.item;
-        card.appendChild(title);
-        const location = document.createElement('p');
-        location.className = 'text-xs font-semibold text-slate-600';
-        location.textContent = formatLocation(entry.item.area, entry.item.bin) || 'Location unspecified';
-        card.appendChild(location);
-        const quantities = document.createElement('div');
-        quantities.className = 'grid grid-cols-2 gap-2';
-        [['Current', entry.current], ['Baseline', entry.baseline]].forEach(function(pair) {
-          const box = document.createElement('div');
-          box.className = 'rounded-lg bg-slate-50 border border-slate-200 p-2';
-          const label = document.createElement('span');
-          label.className = 'block text-xs font-semibold text-slate-500';
-          label.textContent = pair[0];
-          const value = document.createElement('strong');
-          value.className = 'block text-xl text-slate-900';
-          value.textContent = pair[1];
-          box.append(label, value);
-          quantities.appendChild(box);
-        });
-        card.appendChild(quantities);
-        const status = document.createElement('p');
-        status.className = 'text-sm font-extrabold ' + (entry.difference < 0 ? 'text-red-700' : 'text-amber-800');
-        status.textContent = entry.difference < 0
-          ? (isReplenishmentStatusItem(entry.item.item)
-              ? 'Needs replenishing'
-              : 'Replace / restock: ' + (-entry.difference) + ' needed')
-          : entry.difference + ' above baseline';
-        card.appendChild(status);
-        const note = document.createElement('p');
-        note.className = 'text-xs text-slate-700 whitespace-pre-wrap break-words';
-        note.textContent = 'Notes: ' + (String(entry.item.notes || '').trim() || 'None');
-        card.appendChild(note);
-        if (entry.difference < 0) {
-          card.appendChild(buildReplacementShortcutControls(entry));
-        }
-        list.appendChild(card);
+        list.appendChild(buildBaselineAlertCard(entry, entry.van, compact));
       });
       section.classList.remove('hidden');
     }
     function renderFilteredInventory() {
+      const searchSection = document.getElementById('inventorySearchSection');
+      const list = document.getElementById('invCardsList');
+      if (currentInvTab === 'attention') {
+        searchSection.classList.add('hidden');
+        document.getElementById('binTilesSection').classList.add('hidden');
+        document.getElementById('activeBinHeader').classList.add('hidden');
+        list.classList.add('hidden');
+        renderBaselineAlerts();
+        return;
+      }
+      searchSection.classList.remove('hidden');
+      list.classList.remove('hidden');
       renderBaselineAlerts();
       const searchInput = document.getElementById('invSearch');
       const clearBtn = document.getElementById('clearInvSearchBtn');
       const query = (searchInput.value || '').toLowerCase().trim();
-      const list = document.getElementById('invCardsList');
       const data = invCache[currentInvTab] || [];
       if (query.length > 0) {
         clearBtn.classList.remove('hidden');

@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.19.1">
+  <link rel="stylesheet" href="./styles.css?v=1.19.2">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.19.1</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.19.2</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -249,7 +249,7 @@
           </button>
           <button type="button" onclick="selectActionTab('Restock / Replace')" id="tabRestockReplace" title="Restock or replace an item" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
             <span class="text-sm">📦</span>
-            <span id="tabRestockReplaceLabel" class="leading-tight mt-1">Restock / Replace</span>
+            <span id="tabRestockReplaceLabel" class="leading-tight mt-1">Restocked / Replaced</span>
           </button>
           <button type="button" onclick="selectActionTab('Other Event (Found, Disposed, Purchased, Sold)')" id="tabOther" title="Other Event (Found, Disposed, Purchased)" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
             <span class="text-sm">📋</span>
@@ -435,7 +435,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.19.1"></script>
+  <script src="pwa.js?v=1.19.2"></script>
   <script>
     let allItems = [];
     let currentAction = '';

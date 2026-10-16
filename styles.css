@@ -898,3 +898,10 @@ body.log-mode #syncStatusBar {
 .replaced-event-section > div + div {
   margin-top: 16px !important;
 }
+
+
+/* v1.18 — 1/0 replenishment-status supplies */
+#qtyMinusBtn:disabled,
+#qtyPlusBtn:disabled {
+  cursor: default;
+}

@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.17">
+  <link rel="stylesheet" href="./styles.css?v=1.18.1">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.17</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.18.1</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -222,11 +222,11 @@
         </div>
         <div class="log-qty-column">
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Quantity</label>
+          <label id="quantityLabel" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Quantity</label>
           <div class="flex items-center space-x-3">
-            <button type="button" onclick="adjustQty(-1)" class="w-12 h-11 bg-slate-200 active:bg-slate-300 rounded-xl font-bold text-lg text-slate-700 flex items-center justify-center">−</button>
+            <button id="qtyMinusBtn" type="button" onclick="adjustQty(-1)" class="w-12 h-11 bg-slate-200 active:bg-slate-300 rounded-xl font-bold text-lg text-slate-700 flex items-center justify-center">−</button>
             <input type="number" id="quantity" min="1" value="1" required class="flex-1 text-center font-bold text-lg bg-slate-50 border border-slate-300 rounded-xl py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
-            <button type="button" onclick="adjustQty(1)" class="w-12 h-11 bg-slate-200 active:bg-slate-300 rounded-xl font-bold text-lg text-slate-700 flex items-center justify-center">+</button>
+            <button id="qtyPlusBtn" type="button" onclick="adjustQty(1)" class="w-12 h-11 bg-slate-200 active:bg-slate-300 rounded-xl font-bold text-lg text-slate-700 flex items-center justify-center">+</button>
           </div>
         </div>
         </div>
@@ -245,11 +245,11 @@
           </button>
           <button type="button" onclick="selectActionTab('Needs replacement')" id="tabNeedsReplacement" title="Needs replacement / low stock" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
             <span class="text-sm">🧰</span>
-            <span class="leading-tight mt-1">Needs replacement</span>
+            <span id="tabNeedsReplacementLabel" class="leading-tight mt-1">Needs replacement</span>
           </button>
           <button type="button" onclick="selectActionTab('Restock / Replace')" id="tabRestockReplace" title="Restock or replace an item" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
             <span class="text-sm">📦</span>
-            <span class="leading-tight mt-1">Restock / Replace</span>
+            <span id="tabRestockReplaceLabel" class="leading-tight mt-1">Restock / Replace</span>
           </button>
           <button type="button" onclick="selectActionTab('Other Event (Found, Disposed, Purchased, Sold)')" id="tabOther" title="Other Event (Found, Disposed, Purchased)" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
             <span class="text-sm">📋</span>
@@ -260,7 +260,7 @@
       <!-- Sub-Fields: Needs replacement / low stock -->
       <div id="secNeedsReplacement" class="tab-content hidden space-y-3 pt-1">
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Which van/location needs replacement?</label>
+          <label id="needsReplacementLocationLabel" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Which van/location needs replacement?</label>
           <select id="needsReplacementLocation" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
             <option value="2015 Van">2015 Van</option>
             <option value="2021 Van">2021 Van</option>
@@ -270,13 +270,13 @@
           </select>
         </div>
         <div class="replacement-question-box p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
-          <label class="block text-xs font-bold text-slate-700">Did you replace them?</label>
+          <label id="needsReplacementQuestionLabel" class="block text-xs font-bold text-slate-700">Did you replace them?</label>
           <select id="needsReplacementStatus" onchange="onNeedsReplacementChange(this.value)" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
-            <option value="Not replaced yet" selected>Not replaced yet</option>
-            <option value="Restocked from tool room">Restocked from Tool Room</option>
+            <option id="needsStatusNotOption" value="Not replaced yet" selected>Not replaced yet</option>
+            <option id="needsStatusRestockedOption" value="Restocked from tool room">Restocked from Tool Room</option>
           </select>
           <div id="needsRestockQtyWrap" class="hidden">
-            <label class="block text-[11px] font-medium text-slate-500 mb-1">Qty restocked from Tool Room</label>
+            <label id="needsRestockQtyLabel" class="block text-[11px] font-medium text-slate-500 mb-1">Qty restocked from Tool Room</label>
             <div class="needs-restock-stepper">
               <button type="button" onclick="adjustNeedsRestockQty(-1)" class="needs-restock-btn" aria-label="Decrease restocked quantity">−</button>
               <input type="number" id="needsRestockQty" min="0" value="1" class="needs-restock-input" aria-label="Quantity restocked from Tool Room">
@@ -435,7 +435,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.17"></script>
+  <script src="pwa.js?v=1.18.1"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -466,6 +466,194 @@
       }) || '';
     }
 
+    function matchingVanRowsForItem(itemName) {
+      const target = String(itemName || '').trim().toLowerCase();
+      const rows = [];
+      ['2015', '2021', '2026'].forEach(function(tab) {
+        (invCache[tab] || []).forEach(function(row) {
+          if (String(row.item || '').trim().toLowerCase() === target) {
+            rows.push(Object.assign({ _tab: tab }, row));
+          }
+        });
+      });
+      return rows;
+    }
+
+    // Status-only replenishment items are bulk supplies represented as:
+    // 1 = stocked / 0 = needs replenishing.
+    //
+    // This is an explicit list so ordinary inventory items with a baseline of 1
+    // are NOT accidentally treated as replenishment-status supplies.
+    function normalizeReplenishmentName(itemName) {
+      return String(itemName || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[“”″]/g, '"')
+        .replace(/[‘’]/g, "'")
+        .replace(/\s*\/\s*/g, '/')
+        .replace(/\s+/g, ' ');
+    }
+
+    const REPLENISHMENT_STATUS_ITEMS = new Set([
+      'nails',
+      'coping saw blades',
+      'wheel pegs',
+      'wheels',
+      'hinge',
+      'hook',
+      'hair tie',
+      'pilot bit',
+      'rubber band',
+      'pencil',
+      'pen',
+      'mini dowel stick',
+      'glue',
+      'extra wheel bin',
+      'badge/sticker organizer',
+      'first aid kit/de choker',
+      'scrap wood',
+      'spin top/pull string/backup handle',
+      'big dowel stick',
+      'small dowel stick',
+      'small dowell stick',
+      'emergen-c packet',
+      'wa business card'
+    ]);
+
+    function isReplenishmentStatusItem(itemName) {
+      const exact = exactKnownItemName(itemName);
+      if (!exact) return false;
+
+      const name = normalizeReplenishmentName(exact);
+
+      // Screws: every screw type belongs in this status group.
+      if (/\bscrews?\b/.test(name)) return true;
+
+      // Nails may be named by type, e.g. "finish nails".
+      if (/\bnails\b/.test(name)) return true;
+
+      // Board supplies: tolerate spaces such as 4"board vs 4" board.
+      if (/^(1|2|4|6)\s*"\s*board$/.test(name)) return true;
+
+      return REPLENISHMENT_STATUS_ITEMS.has(name);
+    }
+
+    function rowForVanLocation(itemName, location) {
+      const exact = exactKnownItemName(itemName);
+      if (!exact) return null;
+      let tab = '';
+      if (String(location).includes('2015')) tab = '2015';
+      else if (String(location).includes('2021')) tab = '2021';
+      else if (String(location).includes('2026')) tab = '2026';
+      if (!tab) return null;
+
+      let rows = (invCache[tab] || []).filter(function(row) {
+        return String(row.item || '').trim().toLowerCase() === exact.toLowerCase();
+      });
+
+      if (tab === '2026') {
+        const loc = String(location);
+        if (loc === '2026 Van Floor') {
+          rows = rows.filter(function(row) {
+            return String(row.area || '').toLowerCase().includes('floor');
+          });
+        } else if (loc === '2026 2nd Level') {
+          rows = rows.filter(function(row) {
+            const a = String(row.area || '').toLowerCase();
+            return a.includes('2nd') || a.includes('second');
+          });
+        } else if (loc === '2026 Van Other') {
+          rows = rows.filter(function(row) {
+            const a = String(row.area || '').toLowerCase();
+            return !a.includes('floor') && !a.includes('2nd') && !a.includes('second');
+          });
+        }
+      }
+
+      return rows.length === 1 ? rows[0] : null;
+    }
+
+    function updateChoiceTileLabel(selectId, value, label) {
+      const select = document.getElementById(selectId);
+      if (!select) return;
+      const optionIndex = Array.from(select.options).findIndex(function(option) {
+        return option.value === value;
+      });
+      if (optionIndex < 0) return;
+      select.options[optionIndex].textContent = label;
+      const grid = document.getElementById(selectId + 'TileGrid');
+      if (grid && grid.children[optionIndex]) {
+        grid.children[optionIndex].textContent = label;
+      }
+    }
+
+    function setStatusQuantityMode(enabled) {
+      const quantity = document.getElementById('quantity');
+      const minus = document.getElementById('qtyMinusBtn');
+      const plus = document.getElementById('qtyPlusBtn');
+      const label = document.getElementById('quantityLabel');
+      if (!quantity || !minus || !plus || !label) return;
+
+      if (enabled) {
+        quantity.value = '1';
+        quantity.readOnly = true;
+        minus.disabled = true;
+        plus.disabled = true;
+        minus.classList.add('opacity-40');
+        plus.classList.add('opacity-40');
+        label.textContent = 'Status Qty';
+      } else {
+        quantity.readOnly = false;
+        minus.disabled = false;
+        plus.disabled = false;
+        minus.classList.remove('opacity-40');
+        plus.classList.remove('opacity-40');
+        label.textContent = 'Quantity';
+      }
+    }
+
+    function configureSelectedItemMode() {
+      const itemName = exactKnownItemName(document.getElementById('itemSearch').value);
+      const statusItem = isReplenishmentStatusItem(itemName);
+
+      const needsLabel = document.getElementById('tabNeedsReplacementLabel');
+      const restockLabel = document.getElementById('tabRestockReplaceLabel');
+      if (needsLabel) needsLabel.textContent = statusItem ? 'Needs replenish' : 'Needs replacement';
+      if (restockLabel) restockLabel.textContent = statusItem ? 'Replenish' : 'Restock / Replace';
+
+      if (currentAction === 'Needs replacement') {
+        setStatusQuantityMode(statusItem);
+        const locLabel = document.getElementById('needsReplacementLocationLabel');
+        const questionLabel = document.getElementById('needsReplacementQuestionLabel');
+        if (locLabel) locLabel.textContent = statusItem
+          ? 'Which van/location needs replenishing?'
+          : 'Which van/location needs replacement?';
+        if (questionLabel) questionLabel.textContent = statusItem
+          ? 'Did you replenish it?'
+          : 'Did you replace them?';
+
+        updateChoiceTileLabel('needsReplacementStatus', 'Not replaced yet',
+          statusItem ? 'Not replenished yet' : 'Not replaced yet');
+        updateChoiceTileLabel('needsReplacementStatus', 'Restocked from tool room',
+          statusItem ? 'Replenished from Tool Room' : 'Restocked from Tool Room');
+
+        const qtyWrap = document.getElementById('needsRestockQtyWrap');
+        if (statusItem) {
+          document.getElementById('needsRestockQty').value = '1';
+          if (qtyWrap) qtyWrap.classList.add('hidden');
+        } else {
+          onNeedsReplacementChange(document.getElementById('needsReplacementStatus').value);
+        }
+      } else if (currentAction === 'Restock / Replace') {
+        setStatusQuantityMode(statusItem);
+        configureRestockReplaceForItem();
+        const destinationLabel = document.getElementById('transferDestinationLabel');
+        if (statusItem && destinationLabel) destinationLabel.textContent = 'Replenished in';
+      } else {
+        setStatusQuantityMode(false);
+      }
+    }
+
     function configureRestockReplaceForItem(preferredSource) {
       const from = document.getElementById('transferMovedFrom');
       const to = document.getElementById('transferMovedTo');
@@ -492,8 +680,9 @@
         // Consumables/materials that are not in Class Stock come from Tool Room.
         filterLocationTiles(from, function(value) { return value === 'Tool Room'; });
         from.value = 'Tool Room';
+        const statusItem = isReplenishmentStatusItem(itemName);
         if (sourceLabel) sourceLabel.textContent = 'Source';
-        if (destinationLabel) destinationLabel.textContent = 'Restocked in';
+        if (destinationLabel) destinationLabel.textContent = statusItem ? 'Replenished in' : 'Restocked in';
         syncChoiceTiles(from);
         return;
       }
@@ -954,7 +1143,8 @@
     }
     function prepareReplacementFromAlert(entry, source, quantity) {
       const destination = replacementDestinationForAlert(entry);
-      const qty = Math.max(1, Math.min(Number(quantity) || 1, Math.max(1, -entry.difference)));
+      const statusItem = isReplenishmentStatusItem(entry.item.item);
+      const qty = statusItem ? 1 : Math.max(1, Math.min(Number(quantity) || 1, Math.max(1, -entry.difference)));
       document.getElementById('itemSearch').value = entry.item.item;
       document.getElementById('clearBtn').classList.remove('hidden');
       document.getElementById('quantity').value = String(qty);
@@ -971,7 +1161,9 @@
       clearEmployeeForQuickFill();
       const notice = document.getElementById('quickFillNotice');
       const noticeText = document.getElementById('quickFillNoticeText');
-      noticeText.textContent = 'Restock/replace ready: ' + entry.item.item + ' × ' + qty + ' • ' + source + ' → ' + destination + '. Select your name and submit.';
+      noticeText.textContent = (statusItem ? 'Replenishment ready: ' : 'Restock/replace ready: ')
+        + entry.item.item + ' × ' + (statusItem ? 1 : qty) + ' • ' + source + ' → ' + destination
+        + '. Select your name and submit.';
       notice.classList.remove('hidden');
       switchTopMode('log');
       // Quick-fill should always open at the very top of the Log Tool Event page
@@ -987,7 +1179,7 @@
 
       const heading = document.createElement('div');
       heading.className = 'replacement-shortcut-title';
-      heading.textContent = 'Log replacement';
+      heading.textContent = isReplenishmentStatusItem(entry.item.item) ? 'Log replenishment' : 'Log replacement';
       wrap.appendChild(heading);
 
       const quantityRow = document.createElement('div');
@@ -1019,7 +1211,9 @@
       plus.addEventListener('click', function() { clampQuantity(Number(input.value) + 1); });
       input.addEventListener('change', function() { clampQuantity(input.value); });
       quantityRow.append(quantityLabel, minus, input, plus);
-      wrap.appendChild(quantityRow);
+      const statusItem = isReplenishmentStatusItem(entry.item.item);
+      if (!statusItem) wrap.appendChild(quantityRow);
+      else input.value = '1';
 
       const buttons = document.createElement('div');
       buttons.className = 'replacement-source-grid';
@@ -1029,7 +1223,7 @@
             ['Class Stock', 'Replaced from Class Stock']
           ]
         : [
-            ['Tool Room', 'Restocked from Tool Room']
+            ['Tool Room', statusItem ? 'Replenished from Tool Room' : 'Restocked from Tool Room']
           ];
       sourceOptions.forEach(function(pair) {
         const button = document.createElement('button');
@@ -1090,7 +1284,11 @@
         card.appendChild(quantities);
         const status = document.createElement('p');
         status.className = 'text-sm font-extrabold ' + (entry.difference < 0 ? 'text-red-700' : 'text-amber-800');
-        status.textContent = entry.difference < 0 ? 'Replace / restock: ' + (-entry.difference) + ' needed' : entry.difference + ' above baseline';
+        status.textContent = entry.difference < 0
+          ? (isReplenishmentStatusItem(entry.item.item)
+              ? 'Needs replenishing'
+              : 'Replace / restock: ' + (-entry.difference) + ' needed')
+          : entry.difference + ' above baseline';
         card.appendChild(status);
         const note = document.createElement('p');
         note.className = 'text-xs text-slate-700 whitespace-pre-wrap break-words';
@@ -1216,10 +1414,8 @@
     }
     // LOGGER AUTOCOMPLETE & SUBMIT LOGIC
     function onSearchInput(val) {
-      if (currentAction === 'Restock / Replace') {
-        // Reconfigure only from exact matches; partial text stays unselected.
-        setTimeout(function() { configureRestockReplaceForItem(); }, 0);
-      }
+      // Reconfigure labels/source behavior from exact item matches.
+      setTimeout(function() { configureSelectedItemMode(); }, 0);
       const list = document.getElementById('autocompleteList');
       const clearBtn = document.getElementById('clearBtn');
       list.innerHTML = '';
@@ -1243,9 +1439,7 @@
         itemDiv.onclick = function() {
           document.getElementById('itemSearch').value = item;
           list.classList.add('hidden');
-          if (currentAction === 'Restock / Replace') {
-            configureRestockReplaceForItem();
-          }
+          configureSelectedItemMode();
         };
         list.appendChild(itemDiv);
       });
@@ -1255,7 +1449,7 @@
       document.getElementById('itemSearch').value = '';
       document.getElementById('autocompleteList').classList.add('hidden');
       document.getElementById('clearBtn').classList.add('hidden');
-      if (currentAction === 'Restock / Replace') configureRestockReplaceForItem();
+      configureSelectedItemMode();
     }
     document.addEventListener('click', function(e) {
       if (!e.target.closest('#itemSearch') && !e.target.closest('#autocompleteList')) {
@@ -1288,6 +1482,7 @@
       } else if (actionName === 'Other Event (Found, Disposed, Purchased, Sold)') {
         document.getElementById('secOther').classList.remove('hidden');
       }
+      configureSelectedItemMode();
     }
     function onReplaceChange(val) {
       const splitSec = document.getElementById('secSplitQuantities');
@@ -1299,6 +1494,12 @@
     }
     function onNeedsReplacementChange(val) {
       const wrap = document.getElementById('needsRestockQtyWrap');
+      const statusItem = isReplenishmentStatusItem(document.getElementById('itemSearch').value);
+      if (statusItem) {
+        document.getElementById('needsRestockQty').value = '1';
+        wrap.classList.add('hidden');
+        return;
+      }
       if (val === 'Restocked from tool room') {
         wrap.classList.remove('hidden');
         const mainQty = Math.max(1, parseInt(document.getElementById('quantity').value, 10) || 1);
@@ -1350,6 +1551,16 @@
         document.getElementById('needsReplacementLocationTileGrid').scrollIntoView({ behavior:'smooth', block:'center' });
         return;
       }
+      if (currentAction === 'Needs replacement' && isReplenishmentStatusItem(document.getElementById('itemSearch').value)) {
+        const statusRow = rowForVanLocation(
+          document.getElementById('itemSearch').value,
+          document.getElementById('needsReplacementLocation').value
+        );
+        if (statusRow && Number(statusRow.quantity) <= 0) {
+          alert('This item is already marked as needing replenishment in that van/location.');
+          return;
+        }
+      }
       if ((currentAction === 'Broke, Needs replacement' || currentAction === 'Missing, Needs replacement') && !document.getElementById('vanOrLocationBroke').value) {
         alert('Please select which van or location had the tool.');
         document.getElementById('vanOrLocationBrokeTileGrid').scrollIntoView({ behavior:'smooth', block:'center' });
@@ -1359,6 +1570,16 @@
         alert('Please select the source and van location.');
         document.getElementById('transferMovedFromTileGrid').scrollIntoView({ behavior:'smooth', block:'center' });
         return;
+      }
+      if (currentAction === 'Restock / Replace' && isReplenishmentStatusItem(document.getElementById('itemSearch').value)) {
+        const statusRow = rowForVanLocation(
+          document.getElementById('itemSearch').value,
+          document.getElementById('transferMovedTo').value
+        );
+        if (statusRow && Number(statusRow.quantity) >= Number(statusRow.baseline)) {
+          alert('This item is already shown as replenished in that van/location.');
+          return;
+        }
       }
       if (currentAction === 'Other Event (Found, Disposed, Purchased, Sold)' && document.getElementById('otherEventSub').value === 'Moved' && (!document.getElementById('otherMovedFrom').value || !document.getElementById('otherMovedTo').value)) {
         alert('Please select where the item moved from and to.');
@@ -1395,42 +1616,48 @@
       let payloadsToSubmit = [payload];
 
       if (currentAction === 'Restock / Replace') {
+        const statusItem = isReplenishmentStatusItem(payload.item);
+        if (statusItem) payload.quantity = 1;
         if (payload.transferMovedFrom === 'Tool Room') {
           payload.action = 'Restocked from tool room';
           payload.whichVanRestocked = vanForRestockLocation(payload.transferMovedTo);
           payload.restockTargetLocation = payload.transferMovedTo;
+          if (statusItem) {
+            payload.notes = (payload.notes ? payload.notes + ' • ' : '') + 'Replenished';
+          }
         } else {
           payload.action = 'Moved/Transferred Stock';
         }
       } else if (currentAction === 'Needs replacement') {
-        const neededQty = Math.max(1, Number(payload.quantity) || 1);
+        const statusItem = isReplenishmentStatusItem(payload.item);
+        const neededQty = statusItem ? 1 : Math.max(1, Number(payload.quantity) || 1);
         const restockedQty = payload.needsReplacementStatus === 'Restocked from tool room'
-          ? Math.max(0, Math.min(neededQty, Number(payload.needsRestockQty) || 0))
+          ? (statusItem ? 1 : Math.max(0, Math.min(neededQty, Number(payload.needsRestockQty) || 0)))
           : 0;
 
-        // Record the used-up / low-stock quantity as leaving the van. Using the
-        // existing Disposed-of schema preserves the current Sheet formulas without
-        // adding a new backend event type. The note makes the intent explicit.
+        // A replenishment-status item is represented as 1 = stocked / 0 = needs replenishing.
+        // The underlying "Disposed of" row only removes it from the van; there is no
+        // destination quantity, so nothing is added to Misc or any other stock location.
         const depletion = Object.assign({}, payload, {
           action: 'Other Event (Found, Disposed, Purchased, Sold)',
           quantity: neededQty,
           otherEventSub: 'Disposed of',
           otherMovedFrom: payload.needsReplacementLocation,
           otherMovedTo: '',
-          notes: (payload.notes ? payload.notes + ' • ' : '') + 'Needs replacement'
+          notes: (payload.notes ? payload.notes + ' • ' : '') + (statusItem ? 'Needs replenishing' : 'Needs replacement')
         });
 
         payloadsToSubmit = [depletion];
 
-        // If it was replaced immediately, add a normal Tool Room restock as a
-        // second queued event. Partial replacement is supported.
+        // If replenished/replaced immediately, Tool Room is intentionally not tracked as
+        // a quantity source; only the van goes back up.
         if (restockedQty > 0) {
           payloadsToSubmit.push(Object.assign({}, payload, {
             action: 'Restocked from tool room',
             quantity: restockedQty,
             whichVanRestocked: vanForRestockLocation(payload.needsReplacementLocation),
             restockTargetLocation: payload.needsReplacementLocation,
-            notes: (payload.notes ? payload.notes + ' • ' : '') + 'Replacement restock'
+            notes: (payload.notes ? payload.notes + ' • ' : '') + (statusItem ? 'Replenished' : 'Replacement restock')
           }));
         }
       } else if (currentAction === 'Other Event (Found, Disposed, Purchased, Sold)' && payload.otherEventSub === 'Moved') {
@@ -1494,6 +1721,7 @@
       // the same class/van without reselecting the same person and location.
       document.getElementById('itemSearch').value = '';
       document.getElementById('quantity').value = '1';
+      setStatusQuantityMode(false);
       document.getElementById('notes').value = '';
       const notesDetails = document.getElementById('notesDetails');
       if (notesDetails) notesDetails.open = false;

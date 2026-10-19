@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.19.4">
+  <link rel="stylesheet" href="./styles.css?v=1.19.5">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.19.4</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.19.5</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -243,9 +243,9 @@
             <span class="text-sm">❓</span>
             <span class="leading-tight mt-1">Missing</span>
           </button>
-          <button type="button" onclick="selectActionTab('Needs replacement')" id="tabNeedsReplacement" title="Needs replacement / low stock" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
+          <button type="button" onclick="selectActionTab('Needs replacement')" id="tabNeedsReplacement" title="Needs replacement / replenishing" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
             <span class="text-sm">🧰</span>
-            <span id="tabNeedsReplacementLabel" class="leading-tight mt-1">Needs replacement</span>
+            <span id="tabNeedsReplacementLabel" class="leading-tight mt-1">Needs replacement / replenishing</span>
           </button>
           <button type="button" onclick="selectActionTab('Restock / Replace')" id="tabRestockReplace" title="Restock or replace an item" class="action-tab p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex flex-col justify-between hover:bg-slate-100 font-semibold text-left min-h-[66px]">
             <span class="text-sm">📦</span>
@@ -435,7 +435,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.19.4"></script>
+  <script src="pwa.js?v=1.19.5"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -626,7 +626,7 @@
 
       const needsLabel = document.getElementById('tabNeedsReplacementLabel');
       const restockLabel = document.getElementById('tabRestockReplaceLabel');
-      if (needsLabel) needsLabel.textContent = statusItem ? 'Needs replenishing / recharging' : 'Needs replacement';
+      if (needsLabel) needsLabel.textContent = statusItem ? 'Needs replenishing / recharging' : 'Needs replacement / replenishing';
       if (restockLabel) restockLabel.textContent = statusItem ? 'Replenished / Recharged' : 'Restocked / Replaced';
 
       if (currentAction === 'Needs replacement') {
@@ -1258,9 +1258,9 @@
       minus.textContent = '−';
       const input = document.createElement('input');
       input.type = 'number';
-      input.min = '1';
+      input.min = '0';
       input.max = String(statusItem ? 1 : needed);
-      input.value = String(statusItem ? 1 : needed);
+      input.value = '0';
       input.className = 'attention-mini-qty-input';
       input.setAttribute('aria-label', buttonText + ' quantity for ' + entry.item.item);
       const plus = document.createElement('button');
@@ -1269,7 +1269,7 @@
       plus.textContent = '+';
       function setClamped(value) {
         const max = statusItem ? 1 : needed;
-        const next = Math.max(1, Math.min(max, Number(value) || 1));
+        const next = Math.max(0, Math.min(max, Number(value) || 0));
         input.value = String(next);
         return next;
       }
@@ -1286,7 +1286,14 @@
       button.type = 'button';
       button.className = 'attention-action-button';
       button.textContent = buttonText;
-      button.addEventListener('click', function() { clickHandler(setClamped(input.value)); });
+      button.addEventListener('click', function() {
+        const qty = setClamped(input.value);
+        if (qty <= 0) {
+          alert('Select a quantity first.');
+          return;
+        }
+        clickHandler(qty);
+      });
       row.append(stepper, button);
       return row;
     }
@@ -1318,7 +1325,7 @@
       // Replenishment-status supplies are simple 1/0 status items.
       // They only need one action and no quantity picker.
       if (isReplenishmentStatusItem(itemName)) {
-        wrap.appendChild(buildAlertActionButtonOnly('Replenished / Recharged', function() {
+        wrap.appendChild(buildAlertActionButtonOnly('Replenished', function() {
           prepareReplacementFromAlert(entry, 'Tool Room', 1);
         }));
         return wrap;

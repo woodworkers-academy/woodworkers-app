@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.19.3">
+  <link rel="stylesheet" href="./styles.css?v=1.19.4">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.19.3</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.19.4</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -435,7 +435,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.19.3"></script>
+  <script src="pwa.js?v=1.19.4"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -517,7 +517,8 @@
       'small dowel stick',
       'small dowell stick',
       'emergen-c packet',
-      'wa business card'
+      'wa business card',
+      'music player'
     ]);
 
     function isReplenishmentStatusItem(itemName) {
@@ -529,8 +530,15 @@
       // Screws: every screw type belongs in this status group.
       if (/\bscrews?\b/.test(name)) return true;
 
-      // Nails may be named by type, e.g. "finish nails".
-      if (/\bnails\b/.test(name)) return true;
+      // Nails: singular or plural, including sizes such as 1.25" nail(s) and named types.
+      if (/\bnails?\b/.test(name)) return true;
+
+      // All actual drills and drivers are status items, but ordinary drill bits are not.
+      // Pilot bit remains included explicitly above.
+      if ((/\bdrills?\b/.test(name) || /\bdrivers?\b/.test(name)) && !/\bbits?\b/.test(name)) return true;
+
+      // Batteries are status items; battery chargers/charging accessories are not.
+      if (/\bbatter(?:y|ies)\b/.test(name) && !/\bcharg(?:er|ers|ing)\b/.test(name)) return true;
 
       // Board supplies: tolerate spaces such as 4"board vs 4" board.
       if (/^(1|2|4|6)\s*"\s*board$/.test(name)) return true;
@@ -618,24 +626,24 @@
 
       const needsLabel = document.getElementById('tabNeedsReplacementLabel');
       const restockLabel = document.getElementById('tabRestockReplaceLabel');
-      if (needsLabel) needsLabel.textContent = statusItem ? 'Needs replenish' : 'Needs replacement';
-      if (restockLabel) restockLabel.textContent = statusItem ? 'Replenished' : 'Restocked / Replaced';
+      if (needsLabel) needsLabel.textContent = statusItem ? 'Needs replenishing / recharging' : 'Needs replacement';
+      if (restockLabel) restockLabel.textContent = statusItem ? 'Replenished / Recharged' : 'Restocked / Replaced';
 
       if (currentAction === 'Needs replacement') {
         setStatusQuantityMode(statusItem);
         const locLabel = document.getElementById('needsReplacementLocationLabel');
         const questionLabel = document.getElementById('needsReplacementQuestionLabel');
         if (locLabel) locLabel.textContent = statusItem
-          ? 'Which van/location needs replenishing?'
+          ? 'Which van/location needs replenishing / recharging?'
           : 'Which van/location needs replacement?';
         if (questionLabel) questionLabel.textContent = statusItem
-          ? 'Did you replenish it?'
+          ? 'Did you replenish / recharge it?'
           : 'Did you replace them?';
 
         updateChoiceTileLabel('needsReplacementStatus', 'Not replaced yet',
-          statusItem ? 'Not replenished yet' : 'Not replaced yet');
+          statusItem ? 'Not replenished / recharged yet' : 'Not replaced yet');
         updateChoiceTileLabel('needsReplacementStatus', 'Restocked from tool room',
-          statusItem ? 'Replenished from Tool Room' : 'Restocked from Tool Room');
+          statusItem ? 'Replenished / Recharged' : 'Restocked from Tool Room');
 
         const qtyWrap = document.getElementById('needsRestockQtyWrap');
         if (statusItem) {
@@ -648,7 +656,7 @@
         setStatusQuantityMode(statusItem);
         configureRestockReplaceForItem();
         const destinationLabel = document.getElementById('transferDestinationLabel');
-        if (statusItem && destinationLabel) destinationLabel.textContent = 'Replenished in';
+        if (statusItem && destinationLabel) destinationLabel.textContent = 'Replenished / Recharged in';
       } else {
         setStatusQuantityMode(false);
       }
@@ -685,7 +693,7 @@
         const statusItem = isReplenishmentStatusItem(itemName);
         if (sourceLabel) sourceLabel.textContent = chosenSource === 'Tool Room' ? 'Source' : 'Replacement source';
         if (destinationLabel) destinationLabel.textContent = chosenSource === 'Tool Room'
-          ? (statusItem ? 'Replenished in' : 'Restocked in')
+          ? (statusItem ? 'Replenished / Recharged in' : 'Restocked in')
           : 'Replaced in';
         syncChoiceTiles(from);
         return;
@@ -1208,7 +1216,7 @@
       const notice = document.getElementById('quickFillNotice');
       const noticeText = document.getElementById('quickFillNoticeText');
       let actionWord = 'Replacement';
-      if (source === 'Tool Room') actionWord = statusItem ? 'Replenishment' : 'Restock';
+      if (source === 'Tool Room') actionWord = statusItem ? 'Replenishment / recharge' : 'Restock';
       noticeText.textContent = actionWord + ' ready: ' + entry.item.item + ' × ' + qty
         + ' • ' + source + ' → ' + destination + '. Select your name and submit.';
       notice.classList.remove('hidden');
@@ -1310,7 +1318,7 @@
       // Replenishment-status supplies are simple 1/0 status items.
       // They only need one action and no quantity picker.
       if (isReplenishmentStatusItem(itemName)) {
-        wrap.appendChild(buildAlertActionButtonOnly('Replenished', function() {
+        wrap.appendChild(buildAlertActionButtonOnly('Replenished / Recharged', function() {
           prepareReplacementFromAlert(entry, 'Tool Room', 1);
         }));
         return wrap;
@@ -1368,7 +1376,7 @@
       const status = document.createElement('span');
       status.className = entry.difference < 0 ? 'attention-status-short' : 'attention-status-high';
       status.textContent = entry.difference < 0
-        ? (isReplenishmentStatusItem(entry.item.item) ? 'Needs replenishing' : (-entry.difference) + ' needed')
+        ? (isReplenishmentStatusItem(entry.item.item) ? 'Needs replenishing / recharging' : (-entry.difference) + ' needed')
         : '+' + entry.difference + ' above baseline';
       meta.append(current, baseline, status);
       card.appendChild(meta);
@@ -1769,7 +1777,7 @@
           payload.whichVanRestocked = vanForRestockLocation(payload.transferMovedTo);
           payload.restockTargetLocation = payload.transferMovedTo;
           if (statusItem) {
-            payload.notes = (payload.notes ? payload.notes + ' • ' : '') + 'Replenished';
+            payload.notes = (payload.notes ? payload.notes + ' • ' : '') + 'Replenished / Recharged';
           }
         } else {
           payload.action = 'Moved/Transferred Stock';
@@ -1790,7 +1798,7 @@
           otherEventSub: 'Disposed of',
           otherMovedFrom: payload.needsReplacementLocation,
           otherMovedTo: '',
-          notes: (payload.notes ? payload.notes + ' • ' : '') + (statusItem ? 'Needs replenishing' : 'Needs replacement')
+          notes: (payload.notes ? payload.notes + ' • ' : '') + (statusItem ? 'Needs replenishing / recharging' : 'Needs replacement')
         });
 
         payloadsToSubmit = [depletion];
@@ -1803,7 +1811,7 @@
             quantity: restockedQty,
             whichVanRestocked: vanForRestockLocation(payload.needsReplacementLocation),
             restockTargetLocation: payload.needsReplacementLocation,
-            notes: (payload.notes ? payload.notes + ' • ' : '') + (statusItem ? 'Replenished' : 'Replacement restock')
+            notes: (payload.notes ? payload.notes + ' • ' : '') + (statusItem ? 'Replenished / Recharged' : 'Replacement restock')
           }));
         }
       } else if (currentAction === 'Other Event (Found, Disposed, Purchased, Sold)' && payload.otherEventSub === 'Moved') {

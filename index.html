@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.19.5">
+  <link rel="stylesheet" href="./styles.css?v=1.20">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.19.5</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.20</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -435,7 +435,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.19.5"></script>
+  <script src="pwa.js?v=1.20"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -1778,14 +1778,16 @@
 
       if (currentAction === 'Restock / Replace') {
         const statusItem = isReplenishmentStatusItem(payload.item);
-        if (statusItem) payload.quantity = 1;
-        if (payload.transferMovedFrom === 'Tool Room') {
+        if (statusItem) {
+          // Status items use their own clean event type. They do not draw down Tool Room,
+          // Class Stock, Misc, or any other tracked quantity.
+          payload.action = 'Replenished';
+          payload.quantity = 1;
+          payload.statusLocation = payload.transferMovedTo;
+        } else if (payload.transferMovedFrom === 'Tool Room') {
           payload.action = 'Restocked from tool room';
           payload.whichVanRestocked = vanForRestockLocation(payload.transferMovedTo);
           payload.restockTargetLocation = payload.transferMovedTo;
-          if (statusItem) {
-            payload.notes = (payload.notes ? payload.notes + ' • ' : '') + 'Replenished / Recharged';
-          }
         } else {
           payload.action = 'Moved/Transferred Stock';
         }
@@ -1796,30 +1798,43 @@
           ? (statusItem ? 1 : Math.max(0, Math.min(neededQty, Number(payload.needsRestockQty) || 0)))
           : 0;
 
-        // A replenishment-status item is represented as 1 = stocked / 0 = needs replenishing.
-        // The underlying "Disposed of" row only removes it from the van; there is no
-        // destination quantity, so nothing is added to Misc or any other stock location.
-        const depletion = Object.assign({}, payload, {
-          action: 'Other Event (Found, Disposed, Purchased, Sold)',
-          quantity: neededQty,
-          otherEventSub: 'Disposed of',
-          otherMovedFrom: payload.needsReplacementLocation,
-          otherMovedTo: '',
-          notes: (payload.notes ? payload.notes + ' • ' : '') + (statusItem ? 'Needs replenishing / recharging' : 'Needs replacement')
-        });
+        if (statusItem) {
+          // Dedicated status events keep the history accurate: no more "Disposed of" workaround.
+          payloadsToSubmit = [Object.assign({}, payload, {
+            action: 'Needs replenishing / recharging',
+            quantity: 1,
+            statusLocation: payload.needsReplacementLocation
+          })];
 
-        payloadsToSubmit = [depletion];
+          if (restockedQty > 0) {
+            payloadsToSubmit.push(Object.assign({}, payload, {
+              action: 'Replenished',
+              quantity: 1,
+              statusLocation: payload.needsReplacementLocation
+            }));
+          }
+        } else {
+          // Counted items keep the established replacement behavior.
+          const depletion = Object.assign({}, payload, {
+            action: 'Other Event (Found, Disposed, Purchased, Sold)',
+            quantity: neededQty,
+            otherEventSub: 'Disposed of',
+            otherMovedFrom: payload.needsReplacementLocation,
+            otherMovedTo: '',
+            notes: (payload.notes ? payload.notes + ' • ' : '') + 'Needs replacement'
+          });
 
-        // If replenished/replaced immediately, Tool Room is intentionally not tracked as
-        // a quantity source; only the van goes back up.
-        if (restockedQty > 0) {
-          payloadsToSubmit.push(Object.assign({}, payload, {
-            action: 'Restocked from tool room',
-            quantity: restockedQty,
-            whichVanRestocked: vanForRestockLocation(payload.needsReplacementLocation),
-            restockTargetLocation: payload.needsReplacementLocation,
-            notes: (payload.notes ? payload.notes + ' • ' : '') + (statusItem ? 'Replenished / Recharged' : 'Replacement restock')
-          }));
+          payloadsToSubmit = [depletion];
+
+          if (restockedQty > 0) {
+            payloadsToSubmit.push(Object.assign({}, payload, {
+              action: 'Restocked from tool room',
+              quantity: restockedQty,
+              whichVanRestocked: vanForRestockLocation(payload.needsReplacementLocation),
+              restockTargetLocation: payload.needsReplacementLocation,
+              notes: (payload.notes ? payload.notes + ' • ' : '') + 'Replacement restock'
+            }));
+          }
         }
       } else if (currentAction === 'Other Event (Found, Disposed, Purchased, Sold)' && payload.otherEventSub === 'Moved') {
         payload.action = 'Moved/Transferred Stock';

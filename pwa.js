@@ -6,7 +6,7 @@ const WA_API_URL = 'https://script.google.com/a/macros/woodworkersacademy.com/s/
 const WA_API_KEY = 'wa_7uK4nP9qR2mX8cV5sD1fH6jL3bT0yE';
 const WA_DB_NAME = 'woodworkers-van-inventory';
 const WA_DB_VERSION = 1;
-const WA_APP_VERSION = '1.19.5';
+const WA_APP_VERSION = '1.20';
 let waDbPromise = null;
 let waSyncInProgress = false;
 function waCanTryServer() {
@@ -337,6 +337,16 @@ async function waApplyOptimisticInventoryChange(event) {
       event.restockTargetLocation || event.whichVanRestocked,
       qty
     );
+    return;
+  }
+
+  if (action === 'Needs replenishing / recharging' || action === 'Needs replenishing') {
+    await waAdjustCachedLocation(event.item, event.statusLocation, -1);
+    return;
+  }
+
+  if (action === 'Replenished') {
+    await waAdjustCachedLocation(event.item, event.statusLocation, 1);
     return;
   }
 

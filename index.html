@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.20.3">
+  <link rel="stylesheet" href="./styles.css?v=1.20.4">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.20.3</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.20.4</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -435,7 +435,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.20.3"></script>
+  <script src="pwa.js?v=1.20.4"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -540,8 +540,12 @@
       // Batteries are status items; battery chargers/charging accessories are not.
       if (/\bbatter(?:y|ies)\b/.test(name) && !/\bcharg(?:er|ers|ing)\b/.test(name)) return true;
 
-      // Board supplies: tolerate spaces such as 4"board vs 4" board.
-      if (/^(1|2|4|6)\s*"\s*board$/.test(name)) return true;
+      // All board supplies are replenishment-status items, regardless of size or naming variant.
+      if (/\bboards?\b/.test(name)) return true;
+
+      // All dowel supplies are replenishment-status items. Also accept the existing
+      // "dowell" misspelling so current sheet names continue to work.
+      if (/\bdowell?s?\b/.test(name)) return true;
 
       return REPLENISHMENT_STATUS_ITEMS.has(name);
     }

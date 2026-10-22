@@ -6,7 +6,7 @@ const WA_API_URL = 'https://script.google.com/macros/s/AKfycbyDH8FXaodNmptNkphA9
 const WA_API_KEY = 'wa_7uK4nP9qR2mX8cV5sD1fH6jL3bT0yE';
 const WA_DB_NAME = 'woodworkers-van-inventory';
 const WA_DB_VERSION = 1;
-const WA_APP_VERSION = '1.20.4';
+const WA_APP_VERSION = '1.20.6';
 let waDbPromise = null;
 let waSyncInProgress = false;
 function waCanTryServer() {
@@ -307,14 +307,25 @@ async function waAdjustCachedLocation(itemName, location, delta, areaHint = '') 
     if (!Array.isArray(vanData)) return;
 
     let matches = vanData.filter(r => waSameItem(r.item, itemName));
-    if (info.tab === '2026' && info.area) {
+    // For 2026, a unique item name is already unambiguous. Only use the broad
+    // Floor / 2nd Level / Other selector when that item exists in multiple 2026 rows.
+    if (info.tab === '2026' && info.area && matches.length > 1) {
       if (info.area === '__OTHER__') {
         matches = matches.filter(r => {
-          const a = String(r.area || '').toLowerCase();
-          return !a.includes('floor level') && !a.includes('2nd level');
+          const where = (String(r.area || '') + ' ' + String(r.bin || '')).toLowerCase();
+          return !where.includes('floor') && !where.includes('bottom') &&
+            !where.includes('2nd') && !where.includes('second') && !where.includes('middle');
         });
-      } else {
-        matches = matches.filter(r => String(r.area || '').trim().toLowerCase() === info.area.toLowerCase());
+      } else if (info.area === 'Floor Level Bins') {
+        matches = matches.filter(r => {
+          const where = (String(r.area || '') + ' ' + String(r.bin || '')).toLowerCase();
+          return where.includes('floor') || where.includes('bottom');
+        });
+      } else if (info.area === '2nd Level Bins') {
+        matches = matches.filter(r => {
+          const where = (String(r.area || '') + ' ' + String(r.bin || '')).toLowerCase();
+          return where.includes('2nd') || where.includes('second') || where.includes('middle');
+        });
       }
     }
 

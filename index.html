@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.20.6">
+  <link rel="stylesheet" href="./styles.css?v=1.20.8">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.20.6</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.20.8</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -435,7 +435,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.20.6"></script>
+  <script src="pwa.js?v=1.20.8"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -496,16 +496,26 @@
 
     const REPLENISHMENT_STATUS_ITEMS = new Set([
       'nails',
+      'nail',
       'coping saw blades',
+      'coping saw blade',
       'wheel pegs',
+      'wheel peg',
       'wheels',
+      'wheel',
       'hinge',
+      'hinges',
       'hook',
+      'hooks',
       'hair tie',
+      'hair ties',
       'pilot bit',
       'rubber band',
+      'rubber bands',
       'pencil',
+      'pencils',
       'pen',
+      'pens',
       'mini dowel stick',
       'glue',
       'extra wheel bin',
@@ -522,19 +532,23 @@
     ]);
 
     function isReplenishmentStatusItem(itemName) {
-      const exact = exactKnownItemName(itemName);
-      if (!exact) return false;
+      // Replenishment eligibility is based on the item name itself, not on whether
+      // exactKnownItemName() happens to find an identical Tool Summary entry. This
+      // keeps every designated replenishment/recharging item out of the legacy
+      // counted-item / "Disposed of" workflow even when punctuation, capitalization,
+      // or a sheet name varies slightly.
+      const name = normalizeReplenishmentName(itemName);
+      if (!name) return false;
 
-      const name = normalizeReplenishmentName(exact);
+      // Explicit named items from the approved replenishment list.
+      if (REPLENISHMENT_STATUS_ITEMS.has(name)) return true;
 
-      // Screws: every screw type belongs in this status group.
+      // Broad categories from the approved list.
       if (/\bscrews?\b/.test(name)) return true;
-
-      // Nails: singular or plural, including sizes such as 1.25" nail(s) and named types.
       if (/\bnails?\b/.test(name)) return true;
 
       // All actual drills and drivers are status items, but ordinary drill bits are not.
-      // Pilot bit remains included explicitly above.
+      // Pilot bit remains explicitly included in REPLENISHMENT_STATUS_ITEMS.
       if ((/\bdrills?\b/.test(name) || /\bdrivers?\b/.test(name)) && !/\bbits?\b/.test(name)) return true;
 
       // Batteries are status items; battery chargers/charging accessories are not.
@@ -547,7 +561,7 @@
       // "dowell" misspelling so current sheet names continue to work.
       if (/\bdowell?s?\b/.test(name)) return true;
 
-      return REPLENISHMENT_STATUS_ITEMS.has(name);
+      return false;
     }
 
     function rowForVanLocation(itemName, location) {
@@ -1395,7 +1409,11 @@
       card.appendChild(meta);
       const note = document.createElement('p');
       note.className = 'attention-note';
-      note.textContent = 'Notes: ' + (String(entry.item.notes || '').trim() || 'None');
+      let noteText = String(entry.item.notes || '').trim();
+      if (isReplenishmentStatusItem(entry.item.item) && /disposed\s+of[\s\-–—:]*needs\s+replacement/i.test(noteText)) {
+        noteText = '';
+      }
+      note.textContent = 'Notes: ' + (noteText || 'None');
       card.appendChild(note);
       if (entry.difference < 0) {
         const actionEntry = Object.assign({}, entry, { van: van });

@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.20.9">
+  <link rel="stylesheet" href="./styles.css?v=1.20.10">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.20.9</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.20.10</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -94,11 +94,11 @@
       <button onclick="loadInventoryTab('2021')" id="invTab2021" class="inv-tab-btn shrink-0 px-3 py-2 rounded-xl bg-white text-slate-700 border border-slate-200">
         🚐 2021 Van
       </button>
-      <button onclick="loadInventoryTab('class')" id="invTabClass" class="inv-tab-btn shrink-0 px-3 py-2 rounded-xl bg-white text-slate-700 border border-slate-200">
-        🛠️ Class Stock
-      </button>
       <button onclick="loadInventoryTab('2026')" id="invTab2026" class="inv-tab-btn shrink-0 px-3 py-2 rounded-xl bg-white text-slate-700 border border-slate-200">
         🚐 2026 Van
+      </button>
+      <button onclick="loadInventoryTab('class')" id="invTabClass" class="inv-tab-btn shrink-0 px-3 py-2 rounded-xl bg-white text-slate-700 border border-slate-200">
+        🛠️ Class Stock
       </button>
     </div>
     <!-- Whole-van discrepancies, independent of bin/search filters -->
@@ -435,7 +435,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.20.9"></script>
+  <script src="pwa.js?v=1.20.10"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -1456,7 +1456,7 @@
         }
         return;
       }
-      const order = { '2026': 0, '2021': 1, '2015': 2 };
+      const order = { '2015': 0, '2021': 1, '2026': 2 };
       entries.sort(function(a, b) {
         const shortageOrder = (a.difference < 0 ? 0 : 1) - (b.difference < 0 ? 0 : 1);
         if (shortageOrder) return shortageOrder;

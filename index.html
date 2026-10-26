@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.20.8">
+  <link rel="stylesheet" href="./styles.css?v=1.20.9">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.20.8</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.20.9</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -88,17 +88,17 @@
       <button onclick="loadInventoryTab('attention')" id="invTabAttention" class="inv-tab-btn shrink-0 px-3 py-2 rounded-xl bg-indigo-600 text-white shadow-xs font-bold">
         ⚠️ Needs Attention
       </button>
-      <button onclick="loadInventoryTab('2026')" id="invTab2026" class="inv-tab-btn shrink-0 px-3 py-2 rounded-xl bg-white text-slate-700 border border-slate-200">
-        🚐 2026 Van
+      <button onclick="loadInventoryTab('2015')" id="invTab2015" class="inv-tab-btn shrink-0 px-3 py-2 rounded-xl bg-white text-slate-700 border border-slate-200">
+        🚐 2015 Van
       </button>
       <button onclick="loadInventoryTab('2021')" id="invTab2021" class="inv-tab-btn shrink-0 px-3 py-2 rounded-xl bg-white text-slate-700 border border-slate-200">
         🚐 2021 Van
       </button>
-      <button onclick="loadInventoryTab('2015')" id="invTab2015" class="inv-tab-btn shrink-0 px-3 py-2 rounded-xl bg-white text-slate-700 border border-slate-200">
-        🚐 2015 Van
-      </button>
       <button onclick="loadInventoryTab('class')" id="invTabClass" class="inv-tab-btn shrink-0 px-3 py-2 rounded-xl bg-white text-slate-700 border border-slate-200">
         🛠️ Class Stock
+      </button>
+      <button onclick="loadInventoryTab('2026')" id="invTab2026" class="inv-tab-btn shrink-0 px-3 py-2 rounded-xl bg-white text-slate-700 border border-slate-200">
+        🚐 2026 Van
       </button>
     </div>
     <!-- Whole-van discrepancies, independent of bin/search filters -->
@@ -435,7 +435,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.20.8"></script>
+  <script src="pwa.js?v=1.20.9"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -1431,7 +1431,7 @@
       if (currentInvTab === 'attention') {
         compact = true;
         section.classList.add('all-vans-attention');
-        ['2026', '2021', '2015'].forEach(function(van) {
+        ['2015', '2021', '2026'].forEach(function(van) {
           const rows = invCache[van];
           if (!Array.isArray(rows)) return;
           getBaselineDiscrepancies(rows).forEach(function(entry) {

@@ -6,7 +6,7 @@ const WA_API_URL = 'https://script.google.com/macros/s/AKfycbyDH8FXaodNmptNkphA9
 const WA_API_KEY = 'wa_7uK4nP9qR2mX8cV5sD1fH6jL3bT0yE';
 const WA_DB_NAME = 'woodworkers-van-inventory';
 const WA_DB_VERSION = 1;
-const WA_APP_VERSION = '1.20.11';
+const WA_APP_VERSION = '1.20.12';
 let waDbPromise = null;
 let waSyncInProgress = false;
 function waCanTryServer() {
@@ -191,6 +191,27 @@ async function apiGetToolItems() {
     }
     await waUpdateStatus('No cached tool list yet');
     throw new Error('Offline and no cached tool list is available yet. Connect once to load it.');
+  }
+}
+
+async function waRememberToolItem(itemName) {
+  const item = String(itemName || '').trim();
+  if (!item) return;
+
+  let cached = [];
+  try {
+    const existing = await waDbGet('kv', 'tools');
+    if (Array.isArray(existing)) cached = existing.slice();
+  } catch (_) {}
+
+  const key = item.toLowerCase();
+  const exists = cached.some(existing => String(existing || '').trim().toLowerCase() === key);
+  if (!exists) {
+    cached.push(item);
+    cached.sort((a, b) => String(a).localeCompare(String(b), undefined, { sensitivity: 'base' }));
+    try { await waDbPut('kv', cached, 'tools'); } catch (err) {
+      console.warn('Could not remember new tool item locally:', err);
+    }
   }
 }
 
@@ -440,6 +461,9 @@ async function apiSubmitLog(payload) {
   // 3) let syncing happen in the background.
   // This keeps the form responsive even when Apps Script is slow to cold-start.
   await waDbPut('queue', event);
+  // Remember newly typed items immediately so they stay searchable even if the
+  // event was created offline. The backend will add truly new items to MISC on sync.
+  await waRememberToolItem(event.item);
   await waApplyOptimisticInventoryChange(event);
   await waRefreshVisibleInventoryFromCache();
 

@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.20.11">
+  <link rel="stylesheet" href="./styles.css?v=1.20.12">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.20.11</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.20.12</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -435,7 +435,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.20.11"></script>
+  <script src="pwa.js?v=1.20.12"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -464,6 +464,21 @@
       return allItems.find(function(item) {
         return String(item || '').trim().toLowerCase() === target;
       }) || '';
+    }
+
+    function rememberItemInSearchList(itemName) {
+      const item = String(itemName || '').trim();
+      if (!item) return;
+      const key = item.toLowerCase();
+      const exists = allItems.some(function(existing) {
+        return String(existing || '').trim().toLowerCase() === key;
+      });
+      if (!exists) {
+        allItems.push(item);
+        allItems.sort(function(a, b) {
+          return String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
+        });
+      }
     }
 
     function matchingVanRowsForItem(itemName) {
@@ -1883,6 +1898,10 @@
           submitBtn.disabled = false;
           submitBtn.innerHTML = '<span>Submit Tool Event</span>';
           if (res.success) {
+            // A newly typed item becomes searchable in this running session immediately.
+            // pwa.js also stores it in the offline tool-list cache, and the backend adds
+            // genuinely new items to the MISC sheet when the queued event syncs.
+            rememberItemInSearchList(payload.item);
             document.getElementById('successMsg').textContent = res.queued
               ? (res.syncing
                   ? 'Saved on this device — ' + res.item + ' is syncing.'

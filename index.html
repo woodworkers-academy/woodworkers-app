@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.20.19">
+  <link rel="stylesheet" href="./styles.css?v=1.20.21">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.20.19</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.20.21</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -98,7 +98,7 @@
         🚐 2026 Van
       </button>
       <button onclick="loadInventoryTab('class')" id="invTabClass" class="inv-tab-btn shrink-0 px-3 py-2 rounded-xl bg-white text-slate-700 border border-slate-200">
-        🛠️ Class Stock
+        🛠️ Repaired Bin
       </button>
     </div>
     <!-- Whole-van discrepancies, independent of bin/search filters -->
@@ -306,36 +306,15 @@
             <option value="2026 Van Floor">2026 Van Floor Level</option>
             <option value="2026 2nd Level">2026 Van 2nd Level</option>
             <option value="2026 Van Other">2026 Van Other</option>
-            <option value="Class Stock">Class Stock</option>
+            <option value="Repaired Bin">Repaired Bin</option>
           </select>
         </div>
         <div class="replacement-question-box p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
           <label class="block text-xs font-bold text-slate-700">Did you replace them?</label>
-          <select id="didYouReplace" onchange="onReplaceChange(this.value)" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+          <select id="didYouReplace" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
             <option value="No replacement available" selected>Not replaced yet</option>
-            <option value="Yes, from class stock">Yes, from class stock</option>
-            <option value="Yes, from repaired bin">Yes, from repaired bin</option>
-            <option value="Yes, split locations/partially replaced">Yes, split locations/partially replaced</option>
+            <option value="Yes, from repaired bin">Yes, from Repaired Bin</option>
           </select>
-          <!-- Split quantities -->
-          <div id="secSplitQuantities" class="hidden pt-1 split-qty-grid">
-            <div class="split-qty-group">
-              <label class="block text-[11px] font-medium text-slate-500 mb-1">Qty from Repaired Bin</label>
-              <div class="split-qty-stepper">
-                <button type="button" onclick="adjustSplitQty('qtyRepairedBin', -1)" aria-label="Decrease repaired bin quantity" class="split-qty-btn">−</button>
-                <input type="number" id="qtyRepairedBin" min="0" value="0" aria-label="Repaired bin quantity" class="split-qty-input">
-                <button type="button" onclick="adjustSplitQty('qtyRepairedBin', 1)" aria-label="Increase repaired bin quantity" class="split-qty-btn">+</button>
-              </div>
-            </div>
-            <div class="split-qty-group">
-              <label class="block text-[11px] font-medium text-slate-500 mb-1">Qty from Class Stock</label>
-              <div class="split-qty-stepper">
-                <button type="button" onclick="adjustSplitQty('qtyClassStock', -1)" aria-label="Decrease class stock quantity" class="split-qty-btn">−</button>
-                <input type="number" id="qtyClassStock" min="0" value="0" aria-label="Class stock quantity" class="split-qty-input">
-                <button type="button" onclick="adjustSplitQty('qtyClassStock', 1)" aria-label="Increase class stock quantity" class="split-qty-btn">+</button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
       <!-- Sub-Fields: Repaired -->
@@ -349,7 +328,6 @@
             <option value="2026 Van Floor Level">2026 Van Floor Level</option>
             <option value="2026 Van 2nd Level">2026 Van 2nd Level</option>
             <option value="2026 Van Other">2026 Van Other</option>
-            <option value="Class Stock">Class Stock</option>
           </select>
         </div>
       </div>
@@ -360,7 +338,6 @@
           <select id="transferMovedFrom" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
             <option value="Tool Room">Tool Room</option>
             <option value="Repaired Bin">Repaired Bin</option>
-            <option value="Class Stock">Class Stock</option>
           </select>
         </div>
         <div>
@@ -390,7 +367,6 @@
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Moved from</label>
           <select id="otherMovedFrom" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
             <option value="">Purchased</option>
-            <option value="Class Stock">Class Stock</option>
             <option value="2015 Van">2015 Van</option>
             <option value="2021 Van">2021 Van</option>
             <option value="2026 Van Floor">2026 Van Floor Level</option>
@@ -407,7 +383,6 @@
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Moved to</label>
           <select id="otherMovedTo" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
             <option value="">Disposed</option>
-            <option value="Class Stock">Class Stock</option>
             <option value="2015 Van">2015 Van</option>
             <option value="2021 Van">2021 Van</option>
             <option value="2026 Van Floor Level">2026 Van Floor Level</option>
@@ -435,7 +410,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.20.19"></script>
+  <script src="pwa.js?v=1.20.21"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -710,7 +685,7 @@
       // Until an exact inventory item is selected, don't guess a source.
       if (!itemName) {
         filterLocationTiles(from, function(value) {
-          return ['Tool Room', 'Repaired Bin', 'Class Stock'].includes(value);
+          return ['Tool Room', 'Repaired Bin'].includes(value);
         });
         from.selectedIndex = -1;
         if (sourceLabel) sourceLabel.textContent = 'Source';
@@ -720,7 +695,7 @@
       }
 
       if (!isClassStockTool(itemName)) {
-        const chosenSource = ['Repaired Bin', 'Class Stock', 'Tool Room'].includes(preferredSource)
+        const chosenSource = ['Repaired Bin', 'Tool Room'].includes(preferredSource)
           ? preferredSource
           : 'Tool Room';
         filterLocationTiles(from, function(value) { return value === chosenSource; });
@@ -734,32 +709,13 @@
         return;
       }
 
-      // Class-stock tools can be replaced from Repaired Bin or Class Stock.
-      // Use current inventory to make the obvious source automatic when only
-      // one currently has stock. If both are available, let the employee choose.
-      const row = classStockRowForItem(itemName);
-      const repairedQty = row ? Math.max(0, Number(row.repairedBin) || 0) : 0;
-      const classQty = row ? Math.max(0, Number(row.classStock) || 0) : 0;
-      let visibleSources = ['Repaired Bin', 'Class Stock'];
-
-      if (repairedQty > 0 && classQty <= 0) visibleSources = ['Repaired Bin'];
-      else if (classQty > 0 && repairedQty <= 0) visibleSources = ['Class Stock'];
-
+      // Reserve-stock tools now have one canonical source: Repaired Bin.
+      // The backend temporarily combines legacy Class Stock + Repaired Bin
+      // quantities, so this works before the spreadsheet is physically merged.
       filterLocationTiles(from, function(value) {
-        return visibleSources.includes(value);
+        return value === 'Repaired Bin';
       });
-
-      const preferred = preferredSource && visibleSources.includes(preferredSource)
-        ? preferredSource
-        : null;
-
-      if (preferred) {
-        from.value = preferred;
-      } else if (visibleSources.length === 1) {
-        from.value = visibleSources[0];
-      } else {
-        from.selectedIndex = -1;
-      }
+      from.value = 'Repaired Bin';
 
       if (sourceLabel) sourceLabel.textContent = 'Replacement source';
       if (destinationLabel) destinationLabel.textContent = 'Replaced in';
@@ -807,7 +763,7 @@
       const from = document.getElementById('otherMovedFrom');
       const to = document.getElementById('otherMovedTo');
       const regularLocation = function(value) {
-        return Boolean(vanKey(value)) || ['Broken Bin', 'Repaired Bin', 'Class Stock'].includes(value);
+        return Boolean(vanKey(value)) || ['Broken Bin', 'Repaired Bin'].includes(value);
       };
       if (eventName === 'Found') {
         filterLocationTiles(from, function(value) { return value === 'Missing'; });
@@ -820,7 +776,7 @@
       } else if (eventName === 'Added/Purchased') {
         filterLocationTiles(from, function(value) { return value === ''; });
         filterLocationTiles(to, function(value) {
-          return Boolean(vanKey(value)) || ['Tool Room', 'Class Stock', 'E-commerce Stock'].includes(value);
+          return Boolean(vanKey(value)) || ['Tool Room', 'Repaired Bin', 'E-commerce Stock'].includes(value);
         });
         from.value = '';
         to.value = 'Tool Room';
@@ -994,13 +950,14 @@
 
     function loadAllAttentionInventory() {
       const tabs = ['2015', '2021', '2026'];
+      const attentionDataTabs = ['2015', '2021', '2026', 'summary'];
       const loader = document.getElementById('invLoading');
-      const haveAll = tabs.every(function(tab) { return Array.isArray(invCache[tab]); });
+      const haveAll = attentionDataTabs.every(function(tab) { return Array.isArray(invCache[tab]); });
       if (haveAll) {
         loader.classList.add('hidden');
         renderBinTiles();
         renderFilteredInventory();
-        tabs.forEach(function(tab) { refreshInventorySilently(tab); });
+        attentionDataTabs.forEach(function(tab) { refreshInventorySilently(tab); });
         return;
       }
       document.getElementById('baselineAlerts').classList.add('hidden');
@@ -1009,7 +966,7 @@
       document.getElementById('binTilesSection').classList.add('hidden');
       document.getElementById('activeBinHeader').classList.add('hidden');
       loader.classList.remove('hidden');
-      Promise.all(tabs.map(function(tab) {
+      Promise.all(attentionDataTabs.map(function(tab) {
         return apiGetInventory(tab, { silentStatus: true }).then(function(rows) { invCache[tab] = rows; });
       })).then(function() {
         waMarkServerReachable();
@@ -1023,7 +980,7 @@
         loader.classList.add('hidden');
         const list = document.getElementById('invCardsList');
         list.classList.remove('hidden');
-        list.innerHTML = '<div class="p-4 bg-red-50 text-red-600 text-xs rounded-xl text-center">Failed to load all vans: ' + err.message + '</div>';
+        list.innerHTML = '<div class="p-4 bg-red-50 text-red-600 text-xs rounded-xl text-center">Failed to load Needs Attention data: ' + err.message + '</div>';
       });
     }
     function refreshInventorySilently(tabKey) {
@@ -1044,7 +1001,7 @@
     function refreshActiveView() {
       if (currentTopMode === 'inventory') {
         if (currentInvTab === 'attention') {
-          ['2015', '2021', '2026'].forEach(function(tab) { delete invCache[tab]; });
+          ['2015', '2021', '2026', 'summary'].forEach(function(tab) { delete invCache[tab]; });
           loadAllAttentionInventory();
         } else {
           delete invCache[currentInvTab];
@@ -1260,11 +1217,22 @@
       switchTopMode('log');
       requestAnimationFrame(function() { window.scrollTo(0, 0); });
     }
+    function missingQuantityForAlert(entry) {
+      const itemName = String(entry && entry.item && entry.item.item || '').trim().toLowerCase();
+      if (!itemName) return 0;
+      const summaryRows = invCache.summary || [];
+      const row = summaryRows.find(function(summaryItem) {
+        return String(summaryItem.item || '').trim().toLowerCase() === itemName;
+      });
+      return row ? Math.max(0, Number(row.missing) || 0) : 0;
+    }
+
     function prepareFoundFromAlert(entry, quantity) {
       const destination = replacementDestinationForAlert(entry);
+      const missingQty = Math.max(1, missingQuantityForAlert(entry));
       const qty = isReplenishmentStatusItem(entry.item.item)
         ? 1
-        : Math.max(1, Math.min(Number(quantity) || 1, Math.max(1, -entry.difference)));
+        : Math.max(1, Math.min(Number(quantity) || 1, Math.max(1, -entry.difference), missingQty));
       document.getElementById('itemSearch').value = entry.item.item;
       document.getElementById('clearBtn').classList.remove('hidden');
       document.getElementById('quantity').value = String(qty);
@@ -1282,7 +1250,7 @@
       switchTopMode('log');
       requestAnimationFrame(function() { window.scrollTo(0, 0); });
     }
-    function buildAlertActionRow(entry, buttonText, clickHandler) {
+    function buildAlertActionRow(entry, buttonText, clickHandler, maxQuantity) {
       const needed = Math.max(1, -entry.difference);
       const statusItem = isReplenishmentStatusItem(entry.item.item);
       const row = document.createElement('div');
@@ -1296,7 +1264,7 @@
       const input = document.createElement('input');
       input.type = 'number';
       input.min = '0';
-      input.max = String(statusItem ? 1 : needed);
+      input.max = String(statusItem ? 1 : Math.max(1, Math.min(needed, Number(maxQuantity) || needed)));
       input.value = '0';
       input.className = 'attention-mini-qty-input';
       input.setAttribute('aria-label', buttonText + ' quantity for ' + entry.item.item);
@@ -1305,7 +1273,7 @@
       plus.className = 'attention-mini-qty-btn';
       plus.textContent = '+';
       function setClamped(value) {
-        const max = statusItem ? 1 : needed;
+        const max = statusItem ? 1 : Math.max(1, Math.min(needed, Number(maxQuantity) || needed));
         const next = Math.max(0, Math.min(max, Number(value) || 0));
         input.value = String(next);
         return next;
@@ -1358,35 +1326,45 @@
       wrap.appendChild(heading);
 
       const itemName = entry.item.item;
+      const missingQty = missingQuantityForAlert(entry);
 
-      // Replenishment-status supplies are simple 1/0 status items.
-      // They only need one action and no quantity picker.
+      // Replenishment-status supplies still use the replenishment workflow.
+      // If the item is genuinely logged as Missing, also allow it to be Found.
       if (isReplenishmentStatusItem(itemName)) {
         wrap.appendChild(buildAlertActionButtonOnly('Replenished', function() {
           prepareReplacementFromAlert(entry, 'Tool Room', 1);
         }));
+        if (missingQty > 0) {
+          wrap.appendChild(buildAlertActionRow(entry, 'Found', function(qty) {
+            prepareFoundFromAlert(entry, qty);
+          }, missingQty));
+        }
         return wrap;
       }
 
-      // Items carried in Class Stock can be resolved in only these three ways.
+      // Reserve-stock tools can be replaced from Repaired Bin.
       if (isClassStockTool(itemName)) {
         wrap.appendChild(buildAlertActionRow(entry, 'Replaced from Repaired Bin', function(qty) {
           prepareReplacementFromAlert(entry, 'Repaired Bin', qty);
         }));
-        wrap.appendChild(buildAlertActionRow(entry, 'Replaced from Class Stock', function(qty) {
-          prepareReplacementFromAlert(entry, 'Class Stock', qty);
-        }));
-        wrap.appendChild(buildAlertActionRow(entry, 'Found', function(qty) {
-          prepareFoundFromAlert(entry, qty);
-        }));
+        if (missingQty > 0) {
+          wrap.appendChild(buildAlertActionRow(entry, 'Found', function(qty) {
+            prepareFoundFromAlert(entry, qty);
+          }, missingQty));
+        }
         return wrap;
       }
 
-      // Everything else is a Misc item. Misc shortages are resolved only by
-      // restocking from the Tool Room.
+      // Misc shortages can be restocked from the Tool Room. If Tool Summary says
+      // some are actually Missing, also offer Found for only that missing quantity.
       wrap.appendChild(buildAlertActionRow(entry, 'Restocked from Tool Room', function(qty) {
         prepareReplacementFromAlert(entry, 'Tool Room', qty);
       }));
+      if (missingQty > 0) {
+        wrap.appendChild(buildAlertActionRow(entry, 'Found', function(qty) {
+          prepareFoundFromAlert(entry, qty);
+        }, missingQty));
+      }
       return wrap;
     }
 
@@ -1557,9 +1535,8 @@
               </div>
             </div>
             <div class="text-[10px] pt-1 text-slate-500">
-              Class Stock: <strong class="text-indigo-700">${item.classStock ?? 0}</strong> •
+              Repaired Bin: <strong class="text-emerald-600">${item.repaired ?? 0}</strong> •
               Broken: <strong class="text-red-600">${item.broken ?? 0}</strong> •
-              Repaired: <strong class="text-emerald-600">${item.repaired ?? 0}</strong> •
               Missing: <strong class="text-amber-600">${item.missing ?? 0}</strong>
             </div>
           `;
@@ -1568,18 +1545,14 @@
             <div class="flex items-start justify-between">
               <h3 class="text-xs font-bold text-slate-900">${item.tool}</h3>
             </div>
-            <div class="pt-1 text-xs" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;">
-              <div class="bg-indigo-100 text-indigo-800 p-2 rounded-lg border border-indigo-200">
-                <span class="text-[10px] text-indigo-600 block">Class Stock</span>
-                <span class="text-base font-bold">${item.classStock ?? 0}</span>
+            <div class="pt-1 text-xs" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;">
+              <div class="bg-emerald-50 text-emerald-800 p-2 rounded-lg border border-emerald-200">
+                <span class="text-[10px] text-emerald-600 block">Repaired Bin</span>
+                <span class="text-base font-bold">${item.repairedBin ?? 0}</span>
               </div>
               <div class="bg-red-50 text-red-800 p-2 rounded-lg border border-red-200">
                 <span class="text-[10px] text-red-500 block">Broken Bin</span>
                 <span class="text-base font-bold">${item.brokenBin ?? 0}</span>
-              </div>
-              <div class="bg-emerald-50 text-emerald-800 p-2 rounded-lg border border-emerald-200">
-                <span class="text-[10px] text-emerald-500 block">Repaired Bin</span>
-                <span class="text-base font-bold">${item.repairedBin ?? 0}</span>
               </div>
               <div class="bg-amber-50 text-amber-800 p-2 rounded-lg border border-amber-200">
                 <span class="text-[10px] text-amber-600 block">Missing</span>
@@ -1687,12 +1660,7 @@
       configureSelectedItemMode();
     }
     function onReplaceChange(val) {
-      const splitSec = document.getElementById('secSplitQuantities');
-      if (val === 'Yes, split locations/partially replaced') {
-        splitSec.classList.remove('hidden');
-      } else {
-        splitSec.classList.add('hidden');
-      }
+      // Kept as a compatibility no-op for older cached markup.
     }
     function onNeedsReplacementChange(val) {
       const wrap = document.getElementById('needsRestockQtyWrap');
@@ -1803,8 +1771,6 @@
         needsRestockQty: document.getElementById('needsRestockQty').value,
         vanOrLocationBroke: document.getElementById('vanOrLocationBroke').value,
         didYouReplace: document.getElementById('didYouReplace').value,
-        qtyRepairedBin: document.getElementById('qtyRepairedBin').value,
-        qtyClassStock: document.getElementById('qtyClassStock').value,
         repairedMovedTo: document.getElementById('repairedMovedTo').value,
         transferMovedFrom: document.getElementById('transferMovedFrom').value,
         transferMovedTo: document.getElementById('transferMovedTo').value,
@@ -1821,7 +1787,7 @@
         const statusItem = isReplenishmentStatusItem(payload.item);
         if (statusItem) {
           // Status items use their own clean event type. They do not draw down Tool Room,
-          // Class Stock, Misc, or any other tracked quantity.
+          // Repaired Bin, Misc, or any other tracked quantity.
           payload.action = 'Replenished';
           payload.quantity = 1;
           payload.statusLocation = payload.transferMovedTo;
@@ -1989,9 +1955,6 @@
       replaced.value = 'No replacement available';
       syncChoiceTiles(replaced);
       onReplaceChange(replaced.value);
-
-      document.getElementById('qtyRepairedBin').value = '0';
-      document.getElementById('qtyClassStock').value = '0';
 
       const needsStatus = document.getElementById('needsReplacementStatus');
       needsStatus.value = 'Not replaced yet';

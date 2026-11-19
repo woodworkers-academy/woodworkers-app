@@ -6,7 +6,7 @@ const WA_API_URL = 'https://script.google.com/macros/s/AKfycbzydKDcX1IORJR0stTOm
 const WA_API_KEY = 'wa_7uK4nP9qR2mX8cV5sD1fH6jL3bT0yE';
 const WA_DB_NAME = 'woodworkers-van-inventory';
 const WA_DB_VERSION = 1;
-const WA_APP_VERSION = '1.20.19';
+const WA_APP_VERSION = '1.20.21';
 let waDbPromise = null;
 let waSyncInProgress = false;
 let waServerState = 'unknown'; // unknown | live | unreachable
@@ -720,7 +720,7 @@ function waLocationInfo(location, areaHint = '') {
   const lower = raw.toLowerCase();
   if (!raw) return null;
 
-  if (lower === 'class stock') return { type: 'class', summaryField: 'classStock' };
+  if (lower === 'class stock') return { type: 'class', summaryField: 'repaired', classField: 'repairedBin' }; // legacy alias
   if (lower === 'broken bin') return { type: 'class', summaryField: 'broken', classField: 'brokenBin' };
   if (lower === 'repaired bin') return { type: 'class', summaryField: 'repaired', classField: 'repairedBin' };
   if (lower === 'missing') return { type: 'class', summaryField: 'missing', classField: 'missing' };
@@ -765,7 +765,7 @@ async function waAdjustCachedLocation(itemName, location, delta, areaHint = '') 
     }
   }
 
-  // Class Stock / Broken / Repaired have one row per tool, so these are also unambiguous.
+  // Repaired Bin / Broken / Missing have one row per tool, so these are also unambiguous.
   if (info.type === 'class') {
     const classData = await waDbGet('kv', 'inventory:class');
     if (Array.isArray(classData)) {
@@ -845,18 +845,18 @@ async function waApplyOptimisticInventoryChange(event) {
     await waAdjustCachedLocation(event.item, isBroken ? 'Broken Bin' : 'Missing', qty);
 
     let replaced = 0;
-    if (event.didYouReplace === 'Yes, from class stock') {
-      replaced = qty;
-      await waAdjustCachedLocation(event.item, 'Class Stock', -qty);
-    } else if (event.didYouReplace === 'Yes, from repaired bin') {
+    if (event.didYouReplace === 'Yes, from repaired bin' ||
+        event.didYouReplace === 'Yes, from class stock') {
+      // "Class Stock" is retained only as a legacy alias for old queued events.
       replaced = qty;
       await waAdjustCachedLocation(event.item, 'Repaired Bin', -qty);
     } else if (event.didYouReplace === 'Yes, split locations/partially replaced') {
+      // Old queued split events are collapsed into the single Repaired Bin reserve.
       const fromRepaired = Math.max(0, Number(event.qtyRepairedBin) || 0);
       const fromClass = Math.max(0, Number(event.qtyClassStock) || 0);
-      replaced = Math.min(qty, fromRepaired + fromClass);
-      if (fromRepaired) await waAdjustCachedLocation(event.item, 'Repaired Bin', -fromRepaired);
-      if (fromClass) await waAdjustCachedLocation(event.item, 'Class Stock', -fromClass);
+      const fromReserve = fromRepaired + fromClass;
+      replaced = Math.min(qty, fromReserve);
+      if (fromReserve) await waAdjustCachedLocation(event.item, 'Repaired Bin', -fromReserve);
     }
 
     // A replacement goes back into the location the broken/missing tool came from,

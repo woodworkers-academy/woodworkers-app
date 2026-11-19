@@ -6,7 +6,7 @@ const WA_API_URL = 'https://script.google.com/macros/s/AKfycbyDH8FXaodNmptNkphA9
 const WA_API_KEY = 'wa_7uK4nP9qR2mX8cV5sD1fH6jL3bT0yE';
 const WA_DB_NAME = 'woodworkers-van-inventory';
 const WA_DB_VERSION = 1;
-const WA_APP_VERSION = '1.20.12';
+const WA_APP_VERSION = '1.20.14';
 let waDbPromise = null;
 let waSyncInProgress = false;
 function waCanTryServer() {
@@ -250,7 +250,7 @@ async function apiGetInventory(tabKey) {
 }
 
 async function waSendQueuedEvent(event) {
-  const res = await waJsonp('submit', { payload: JSON.stringify(event) }, 12000);
+  const res = await waJsonp('submit', { payload: JSON.stringify(event) }, 30000);
   if (!res || !res.success) throw new Error(res && res.error ? res.error : 'Save failed');
   return res;
 }
@@ -546,7 +546,13 @@ async function waSyncPending() {
 async function waWarmInventoryCache() {
   if (!waCanTryServer()) return;
   const tabs = ['2026', '2021', '2015', 'class', 'summary'];
-  await Promise.allSettled(tabs.map(tab => apiGetInventory(tab)));
+
+  // Warm one view at a time. This avoids a burst of simultaneous Apps Script
+  // requests competing with a queued event that is trying to sync.
+  for (const tab of tabs) {
+    try { await apiGetInventory(tab); } catch (_) {}
+  }
+
   // Pull the refreshed authoritative snapshots back into the running page too.
   await waRefreshVisibleInventoryFromCache();
 }
@@ -575,9 +581,18 @@ async function waInitPwa() {
   }
 
   if (waCanTryServer()) {
-    setTimeout(() => { waSyncPending(); }, 0);
-    // Pre-cache every inventory tab after startup; never block the visible app.
-    setTimeout(() => { waWarmInventoryCache(); }, 700);
+    setTimeout(async () => {
+      let pending = 0;
+      try { pending = await waPendingCount(); } catch (_) {}
+
+      if (pending) {
+        // Queued tool events are more important than background inventory warming.
+        // waSyncPending() will warm inventory after a successful sync.
+        await waSyncPending();
+      } else {
+        await waWarmInventoryCache();
+      }
+    }, 0);
   }
 }
 

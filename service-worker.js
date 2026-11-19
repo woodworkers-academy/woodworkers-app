@@ -1,4 +1,4 @@
-const CACHE_NAME = 'van-inventory-shell-v1.20.12';
+const CACHE_NAME = 'van-inventory-shell-v1.20.14';
 const APP_SHELL = [
   './',
   './index.html',

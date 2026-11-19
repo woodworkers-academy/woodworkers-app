@@ -6,12 +6,13 @@ const WA_API_URL = 'https://script.google.com/macros/s/AKfycbyDH8FXaodNmptNkphA9
 const WA_API_KEY = 'wa_7uK4nP9qR2mX8cV5sD1fH6jL3bT0yE';
 const WA_DB_NAME = 'woodworkers-van-inventory';
 const WA_DB_VERSION = 1;
-const WA_APP_VERSION = '1.20.16';
+const WA_APP_VERSION = '1.20.17';
 let waDbPromise = null;
 let waSyncInProgress = false;
 let waServerState = 'unknown'; // unknown | live | unreachable
 let waLastServerError = '';
 let waLastServerSuccess = null;
+let waBackendVersion = null;
 
 function waCanTryServer() {
   // Do not persist a temporary 'server offline' state. iOS can miss or delay
@@ -87,7 +88,7 @@ async function waDbGetAll(store) {
   });
 }
 
-function waJsonp(action, params = {}, timeoutMs = 12000) {
+function waJsonp(action, params = {}, timeoutMs = 12000, options = {}) {
   // If the browser already knows it is offline, do not create a network request at all.
   if (navigator.onLine === false) {
     return Promise.reject(new Error('Offline'));
@@ -97,7 +98,7 @@ function waJsonp(action, params = {}, timeoutMs = 12000) {
     const script = document.createElement('script');
     const timer = setTimeout(() => {
       const err = new Error('Request timed out');
-      waMarkServerUnreachable(err);
+      if (options.affectsHealth !== false) waMarkServerUnreachable(err);
       finish(err);
     }, timeoutMs);
 
@@ -109,12 +110,12 @@ function waJsonp(action, params = {}, timeoutMs = 12000) {
     }
 
     window[callback] = data => {
-      waMarkServerReachable();
+      if (options.affectsHealth !== false) waMarkServerReachable();
       finish(null, data);
     };
     script.onerror = () => {
       const err = new Error('Could not reach inventory server');
-      waMarkServerUnreachable(err);
+      if (options.affectsHealth !== false) waMarkServerUnreachable(err);
       finish(err);
     };
 
@@ -529,6 +530,10 @@ async function waUpdateStatus(message) {
     if (reason && !label.toLowerCase().includes(reason)) label += ' • ' + reason;
   }
 
+  if (online && waServerState === 'live' && waBackendVersion === 'legacy') {
+    if (!/backend update needed/i.test(label)) label += ' • backend update needed';
+  }
+
   if (pending) {
     const alreadyMentionsPending = /waiting to sync/i.test(label);
     if (!alreadyMentionsPending && !/syncing/i.test(label)) {
@@ -585,17 +590,27 @@ async function waUpdateStatus(message) {
 
 async function waCheckBackendVersion() {
   if (!waCanTryServer()) return null;
+
   try {
-    const res = await waJsonp('version', {}, 12000);
-    if (!res || !res.success) throw new Error(res && res.error ? res.error : 'Version check failed');
+    // "ping" has existed in the backend for a long time. Do not use a newly-added
+    // action as the connectivity test, because an older deployment can be reachable
+    // while legitimately not knowing that newer action.
+    const res = await waJsonp('ping', {}, 12000, { affectsHealth: true });
+    if (!res || !res.success) {
+      throw new Error(res && res.error ? res.error : 'Ping failed');
+    }
+
     waMarkServerReachable();
-    const backendVersion = res.data && res.data.backendVersion ? String(res.data.backendVersion) : 'unknown';
-    try { await waDbPut('kv', backendVersion, 'backendVersion'); } catch (_) {}
+    waBackendVersion = res.data && res.data.backendVersion
+      ? String(res.data.backendVersion)
+      : 'legacy';
+
+    try { await waDbPut('kv', waBackendVersion, 'backendVersion'); } catch (_) {}
     await waUpdateStatus();
-    return backendVersion;
+    return waBackendVersion;
   } catch (err) {
     waMarkServerUnreachable(err);
-    await waUpdateStatus('Using cached data');
+    await waUpdateStatus();
     return null;
   }
 }
@@ -612,7 +627,7 @@ async function apiGetToolItems(options = {}) {
   }
 
   try {
-    const res = await waJsonp('tools');
+    const res = await waJsonp('tools', {}, 12000, { affectsHealth: !options.silentStatus });
     if (!res || !res.success) throw new Error(res && res.error ? res.error : 'Tool list request failed');
     try {
       await waDbPut('kv', res.data || [], 'tools');
@@ -620,12 +635,12 @@ async function apiGetToolItems(options = {}) {
     } catch (err) {
       console.warn('Could not cache tool list:', err);
     }
-    if (!options.silentStatus) await waUpdateStatus();
+    if (!options.silentStatus) await waUpdateStatus('Live data');
     return res.data || [];
   } catch (err) {
-    waMarkServerUnreachable(err);
+    if (!options.silentStatus) waMarkServerUnreachable(err);
     if (hasCached) {
-      if (!options.silentStatus) await waUpdateStatus('Using cached data');
+      if (!options.silentStatus) await waUpdateStatus('Using cached data • live request failed');
       return cached;
     }
     if (!options.silentStatus) await waUpdateStatus('No cached data available');
@@ -667,7 +682,7 @@ async function apiGetInventory(tabKey, options = {}) {
   }
 
   try {
-    const res = await waJsonp('inventory', { tab: tabKey });
+    const res = await waJsonp('inventory', { tab: tabKey }, 12000, { affectsHealth: !options.silentStatus });
     if (!res || !res.success) throw new Error(res && res.error ? res.error : 'Inventory request failed');
     try {
       await waDbPut('kv', res.data || [], cacheKey);
@@ -675,12 +690,12 @@ async function apiGetInventory(tabKey, options = {}) {
     } catch (err) {
       console.warn('Could not cache inventory:', err);
     }
-    if (!options.silentStatus) await waUpdateStatus();
+    if (!options.silentStatus) await waUpdateStatus('Live data');
     return res.data || [];
   } catch (err) {
-    waMarkServerUnreachable(err);
+    if (!options.silentStatus) waMarkServerUnreachable(err);
     if (hasCached) {
-      if (!options.silentStatus) await waUpdateStatus('Using cached data');
+      if (!options.silentStatus) await waUpdateStatus('Using cached data • live request failed');
       return cached;
     }
     if (!options.silentStatus) await waUpdateStatus('No cached data available');

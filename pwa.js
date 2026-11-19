@@ -6,9 +6,13 @@ const WA_API_URL = 'https://script.google.com/macros/s/AKfycbyDH8FXaodNmptNkphA9
 const WA_API_KEY = 'wa_7uK4nP9qR2mX8cV5sD1fH6jL3bT0yE';
 const WA_DB_NAME = 'woodworkers-van-inventory';
 const WA_DB_VERSION = 1;
-const WA_APP_VERSION = '1.20.15';
+const WA_APP_VERSION = '1.20.16';
 let waDbPromise = null;
 let waSyncInProgress = false;
+let waServerState = 'unknown'; // unknown | live | unreachable
+let waLastServerError = '';
+let waLastServerSuccess = null;
+
 function waCanTryServer() {
   // Do not persist a temporary 'server offline' state. iOS can miss or delay
   // online/offline events when returning from airplane mode. We use
@@ -17,8 +21,15 @@ function waCanTryServer() {
   return navigator.onLine !== false;
 }
 
-function waMarkServerReachable() {}
-function waMarkServerUnreachable() {}
+function waMarkServerReachable() {
+  waServerState = 'live';
+  waLastServerError = '';
+  waLastServerSuccess = new Date();
+}
+function waMarkServerUnreachable(error) {
+  waServerState = 'unreachable';
+  waLastServerError = error && error.message ? error.message : String(error || 'Could not reach server');
+}
 
 function waOpenDb() {
   if (waDbPromise) return waDbPromise;
@@ -76,7 +87,7 @@ async function waDbGetAll(store) {
   });
 }
 
-function waJsonp(action, params = {}, timeoutMs = 3500) {
+function waJsonp(action, params = {}, timeoutMs = 12000) {
   // If the browser already knows it is offline, do not create a network request at all.
   if (navigator.onLine === false) {
     return Promise.reject(new Error('Offline'));
@@ -85,8 +96,9 @@ function waJsonp(action, params = {}, timeoutMs = 3500) {
     const callback = '__wa_cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
     const script = document.createElement('script');
     const timer = setTimeout(() => {
-      waMarkServerUnreachable();
-      finish(new Error('Request timed out'));
+      const err = new Error('Request timed out');
+      waMarkServerUnreachable(err);
+      finish(err);
     }, timeoutMs);
 
     function finish(err, data) {
@@ -101,8 +113,9 @@ function waJsonp(action, params = {}, timeoutMs = 3500) {
       finish(null, data);
     };
     script.onerror = () => {
-      waMarkServerUnreachable();
-      finish(new Error('Could not reach inventory server'));
+      const err = new Error('Could not reach inventory server');
+      waMarkServerUnreachable(err);
+      finish(err);
     };
 
     const query = new URLSearchParams({
@@ -446,6 +459,7 @@ async function waRetryPendingEvent(eventId) {
       event._lastSyncError = err && err.message ? err.message : String(err);
       event._lastSyncAttempt = new Date().toISOString();
       await waDbPut('queue', event);
+      alert('Sync failed: ' + event._lastSyncError);
     }
   } finally {
     waSyncInProgress = false;
@@ -492,8 +506,28 @@ async function waUpdateStatus(message) {
   try { pending = await waPendingCount(); } catch (_) {}
   try { lastSync = await waDbGet('kv', 'lastSync'); } catch (_) {}
 
-  let label = message || (online ? 'Online' : 'Offline');
+  let label;
+  if (message) {
+    label = message;
+  } else if (!online) {
+    label = 'Offline';
+  } else if (waServerState === 'live') {
+    label = 'Live data';
+  } else if (waServerState === 'unreachable') {
+    label = 'Using cached data';
+  } else {
+    label = 'Connecting…';
+  }
   if (!online && message && !/^Offline\b/i.test(message)) label = 'Offline • ' + message;
+
+  if (online && waServerState === 'unreachable' && !/syncing/i.test(label)) {
+    const reason = waLastServerError === 'Request timed out'
+      ? 'server timed out'
+      : waLastServerError === 'Could not reach inventory server'
+        ? 'server unreachable'
+        : '';
+    if (reason && !label.toLowerCase().includes(reason)) label += ' • ' + reason;
+  }
 
   if (pending) {
     const alreadyMentionsPending = /waiting to sync/i.test(label);
@@ -549,13 +583,30 @@ async function waUpdateStatus(message) {
   }
 }
 
-async function apiGetToolItems() {
+async function waCheckBackendVersion() {
+  if (!waCanTryServer()) return null;
+  try {
+    const res = await waJsonp('version', {}, 12000);
+    if (!res || !res.success) throw new Error(res && res.error ? res.error : 'Version check failed');
+    waMarkServerReachable();
+    const backendVersion = res.data && res.data.backendVersion ? String(res.data.backendVersion) : 'unknown';
+    try { await waDbPut('kv', backendVersion, 'backendVersion'); } catch (_) {}
+    await waUpdateStatus();
+    return backendVersion;
+  } catch (err) {
+    waMarkServerUnreachable(err);
+    await waUpdateStatus('Using cached data');
+    return null;
+  }
+}
+
+async function apiGetToolItems(options = {}) {
   let cached;
   try { cached = await waDbGet('kv', 'tools'); } catch (_) { cached = undefined; }
   const hasCached = cached !== undefined && cached !== null;
 
   if (!waCanTryServer()) {
-    await waUpdateStatus(hasCached ? 'Using cached data' : 'No cached tool list yet');
+    if (!options.silentStatus) await waUpdateStatus(hasCached ? 'Using cached data' : 'No cached data available');
     if (hasCached) return cached;
     throw new Error('No cached tool list is available yet. Connect once to load it for offline use.');
   }
@@ -569,15 +620,15 @@ async function apiGetToolItems() {
     } catch (err) {
       console.warn('Could not cache tool list:', err);
     }
-    await waUpdateStatus();
+    if (!options.silentStatus) await waUpdateStatus();
     return res.data || [];
   } catch (err) {
-    waMarkServerUnreachable();
+    waMarkServerUnreachable(err);
     if (hasCached) {
-      await waUpdateStatus('Using cached data');
+      if (!options.silentStatus) await waUpdateStatus('Using cached data');
       return cached;
     }
-    await waUpdateStatus('No cached tool list yet');
+    if (!options.silentStatus) await waUpdateStatus('No cached data available');
     throw new Error('Offline and no cached tool list is available yet. Connect once to load it.');
   }
 }
@@ -603,14 +654,14 @@ async function waRememberToolItem(itemName) {
   }
 }
 
-async function apiGetInventory(tabKey) {
+async function apiGetInventory(tabKey, options = {}) {
   const cacheKey = 'inventory:' + tabKey;
   let cached;
   try { cached = await waDbGet('kv', cacheKey); } catch (_) { cached = undefined; }
   const hasCached = cached !== undefined && cached !== null;
 
   if (!waCanTryServer()) {
-    await waUpdateStatus(hasCached ? 'Using cached inventory' : 'No cached inventory for this view');
+    if (!options.silentStatus) await waUpdateStatus(hasCached ? 'Using cached data' : 'No cached data available');
     if (hasCached) return cached;
     throw new Error('No cached inventory is available for this view yet. Connect once and open this view to save it for offline use.');
   }
@@ -624,15 +675,15 @@ async function apiGetInventory(tabKey) {
     } catch (err) {
       console.warn('Could not cache inventory:', err);
     }
-    await waUpdateStatus();
+    if (!options.silentStatus) await waUpdateStatus();
     return res.data || [];
   } catch (err) {
-    waMarkServerUnreachable();
+    waMarkServerUnreachable(err);
     if (hasCached) {
-      await waUpdateStatus('Using cached inventory');
+      if (!options.silentStatus) await waUpdateStatus('Using cached data');
       return cached;
     }
-    await waUpdateStatus('No cached inventory for this view');
+    if (!options.silentStatus) await waUpdateStatus('No cached data available');
     throw new Error('Offline and no cached inventory is available for this view yet. Connect once and open this view to cache it.');
   }
 }
@@ -946,7 +997,7 @@ async function waWarmInventoryCache() {
   // Warm one view at a time. This avoids a burst of simultaneous Apps Script
   // requests competing with a queued event that is trying to sync.
   for (const tab of tabs) {
-    try { await apiGetInventory(tab); } catch (_) {}
+    try { await apiGetInventory(tab, { silentStatus: true }); } catch (_) {}
   }
 
   // Pull the refreshed authoritative snapshots back into the running page too.
@@ -978,6 +1029,7 @@ async function waInitPwa() {
 
   if (waCanTryServer()) {
     setTimeout(async () => {
+      await waCheckBackendVersion();
       let pending = 0;
       try { pending = await waPendingCount(); } catch (_) {}
 

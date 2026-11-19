@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.20.17">
+  <link rel="stylesheet" href="./styles.css?v=1.20.18">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -47,7 +47,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.20.17</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.20.18</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -435,7 +435,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.20.17"></script>
+  <script src="pwa.js?v=1.20.18"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -920,8 +920,8 @@
 
       try {
         const results = await Promise.all([
-          apiGetToolItems(),
-          apiGetInventory('class')
+          apiGetToolItems({ silentStatus: true }),
+          apiGetInventory('class', { silentStatus: true })
         ]);
         allItems = results[0];
         invCache['class'] = results[1];
@@ -929,13 +929,13 @@
       } catch (err) {
         console.error(err);
         try {
-          allItems = await apiGetToolItems();
+          allItems = await apiGetToolItems({ silentStatus: true });
         } catch (toolErr) {
           console.error(toolErr);
           allItems = [];
         }
         try {
-          const classRows = await apiGetInventory('class');
+          const classRows = await apiGetInventory('class', { silentStatus: true });
           invCache['class'] = classRows;
           updateClassStockToolNames(classRows);
         } catch (classErr) {
@@ -1010,8 +1010,10 @@
       document.getElementById('activeBinHeader').classList.add('hidden');
       loader.classList.remove('hidden');
       Promise.all(tabs.map(function(tab) {
-        return apiGetInventory(tab).then(function(rows) { invCache[tab] = rows; });
+        return apiGetInventory(tab, { silentStatus: true }).then(function(rows) { invCache[tab] = rows; });
       })).then(function() {
+        waMarkServerReachable();
+        waUpdateStatus('Live data').catch(function() {});
         loader.classList.add('hidden');
         if (currentInvTab === 'attention') {
           renderBinTiles();
@@ -1026,7 +1028,7 @@
     }
     function refreshInventorySilently(tabKey) {
       if (navigator.onLine === false) return;
-      apiGetInventory(tabKey)
+      apiGetInventory(tabKey, { silentStatus: true })
         .then(function(res) {
           invCache[tabKey] = res;
           if (tabKey === 'class') updateClassStockToolNames(res);

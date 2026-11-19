@@ -6,7 +6,7 @@ const WA_API_URL = 'https://script.google.com/macros/s/AKfycbyDH8FXaodNmptNkphA9
 const WA_API_KEY = 'wa_7uK4nP9qR2mX8cV5sD1fH6jL3bT0yE';
 const WA_DB_NAME = 'woodworkers-van-inventory';
 const WA_DB_VERSION = 1;
-const WA_APP_VERSION = '1.20.17';
+const WA_APP_VERSION = '1.20.18';
 let waDbPromise = null;
 let waSyncInProgress = false;
 let waServerState = 'unknown'; // unknown | live | unreachable
@@ -1050,11 +1050,12 @@ async function waInitPwa() {
 
       if (pending) {
         // Queued tool events are more important than background inventory warming.
-        // waSyncPending() will warm inventory after a successful sync.
         await waSyncPending();
-      } else {
-        await waWarmInventoryCache();
       }
+      // Do not immediately warm every inventory tab here. The page startup already
+      // loads the data it needs, and additional background requests can create
+      // misleading connection-state races on mobile browsers.
+
     }, 0);
   }
 }
@@ -1071,5 +1072,8 @@ navigator.serviceWorker?.addEventListener('controllerchange', () => {
 window.addEventListener('online', () => { waMarkServerReachable(); waSyncPending(); });
 window.addEventListener('offline', () => { waMarkServerUnreachable(); waUpdateStatus(); });
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && waCanTryServer()) waSyncPending();
+  if (document.visibilityState === 'visible' && waCanTryServer()) {
+    waCheckBackendVersion().catch(() => {});
+    waSyncPending();
+  }
 });

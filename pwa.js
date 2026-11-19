@@ -2,11 +2,11 @@
  * Handles API calls, offline cache, queued log entries, and reconnect sync.
  */
 
-const WA_API_URL = 'https://script.google.com/macros/s/AKfycbyDH8FXaodNmptNkphA9xXaY3ydMacCdvseicmt61xlSyJM5WIHsmbXAMuptEN45smx/exec';
+const WA_API_URL = 'https://script.google.com/macros/s/AKfycbzydKDcX1IORJR0stTOmACkaD0grgVPWEDsk_ie1w7xpBa_fXDDcx7YS8XJrMuruazC/exec';
 const WA_API_KEY = 'wa_7uK4nP9qR2mX8cV5sD1fH6jL3bT0yE';
 const WA_DB_NAME = 'woodworkers-van-inventory';
 const WA_DB_VERSION = 1;
-const WA_APP_VERSION = '1.20.18';
+const WA_APP_VERSION = '1.20.19';
 let waDbPromise = null;
 let waSyncInProgress = false;
 let waServerState = 'unknown'; // unknown | live | unreachable

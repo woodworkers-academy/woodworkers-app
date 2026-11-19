@@ -6,7 +6,7 @@ const WA_API_URL = 'https://script.google.com/macros/s/AKfycbyDH8FXaodNmptNkphA9
 const WA_API_KEY = 'wa_7uK4nP9qR2mX8cV5sD1fH6jL3bT0yE';
 const WA_DB_NAME = 'woodworkers-van-inventory';
 const WA_DB_VERSION = 1;
-const WA_APP_VERSION = '1.20.14';
+const WA_APP_VERSION = '1.20.15';
 let waDbPromise = null;
 let waSyncInProgress = false;
 function waCanTryServer() {
@@ -128,10 +128,361 @@ async function waPendingCount() {
   catch (_) { return 0; }
 }
 
-async function waUpdateStatus(message) {
+function waPendingEventsSorted_(events) {
+  return (events || []).slice().sort((a, b) => {
+    const ta = Date.parse(a && a.clientTimestamp ? a.clientTimestamp : '') || 0;
+    const tb = Date.parse(b && b.clientTimestamp ? b.clientTimestamp : '') || 0;
+    return ta - tb;
+  });
+}
+
+function waPendingEventAction_(event) {
+  const action = String((event && event.action) || '').trim();
+  if (action === 'Other Event (Found, Disposed, Purchased, Sold)') {
+    return String(event.otherEventSub || action).trim();
+  }
+  return action || 'Tool event';
+}
+
+function waPendingEventLocation_(event) {
+  if (!event) return '';
+  if (event.statusLocation) return String(event.statusLocation);
+  if (event.restockTargetLocation) return String(event.restockTargetLocation);
+  if (event.whichVanRestocked) {
+    const extra = event.storageArea2026 ? ' • ' + event.storageArea2026 : '';
+    return String(event.whichVanRestocked) + extra;
+  }
+  if (event.needsReplacementLocation) return String(event.needsReplacementLocation);
+  if (event.vanOrLocationBroke) return String(event.vanOrLocationBroke);
+  if (event.repairedMovedTo) return 'To ' + String(event.repairedMovedTo);
+  if (event.transferMovedFrom || event.transferMovedTo) {
+    return [event.transferMovedFrom ? 'From ' + event.transferMovedFrom : '',
+            event.transferMovedTo ? 'To ' + event.transferMovedTo : '']
+      .filter(Boolean).join(' • ');
+  }
+  if (event.otherMovedFrom || event.otherMovedTo) {
+    return [event.otherMovedFrom ? 'From ' + event.otherMovedFrom : '',
+            event.otherMovedTo ? 'To ' + event.otherMovedTo : '']
+      .filter(Boolean).join(' • ');
+  }
+  return '';
+}
+
+function waPendingEventTime_(event) {
+  const raw = event && event.clientTimestamp;
+  const d = raw ? new Date(raw) : null;
+  if (!d || Number.isNaN(d.getTime())) return 'Time unavailable';
+  return d.toLocaleString([], {
+    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+  });
+}
+
+function waEnsurePendingUi() {
   const bar = document.getElementById('syncStatusBar');
   const text = document.getElementById('syncStatusText');
-  if (!bar || !text) return;
+  if (!bar || !text) return null;
+
+  let button = document.getElementById('pendingChangesBtn');
+  if (!button) {
+    button = document.createElement('button');
+    button.type = 'button';
+    button.id = 'pendingChangesBtn';
+    button.textContent = 'Pending changes';
+    button.hidden = true;
+    button.setAttribute('aria-label', 'View pending changes');
+    button.style.cssText = [
+      'display:none',
+      'flex:0 0 auto',
+      'white-space:nowrap',
+      'border:1px solid currentColor',
+      'border-radius:999px',
+      'padding:2px 8px',
+      'background:rgba(255,255,255,.72)',
+      'font-weight:800',
+      'font-size:11px',
+      'line-height:18px'
+    ].join(';');
+    button.addEventListener('click', waOpenPendingChanges);
+    bar.appendChild(button);
+  }
+
+  let overlay = document.getElementById('pendingChangesOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'pendingChangesOverlay';
+    overlay.hidden = true;
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'pendingChangesTitle');
+    overlay.style.cssText = [
+      'position:fixed',
+      'inset:0',
+      'z-index:1000',
+      'background:rgba(15,23,42,.52)',
+      'padding:18px',
+      'display:none',
+      'align-items:flex-start',
+      'justify-content:center',
+      'overflow:auto'
+    ].join(';');
+
+    const panel = document.createElement('div');
+    panel.style.cssText = [
+      'width:100%',
+      'max-width:520px',
+      'margin-top:24px',
+      'background:white',
+      'border-radius:18px',
+      'box-shadow:0 20px 45px rgba(15,23,42,.28)',
+      'border:1px solid #cbd5e1',
+      'overflow:hidden'
+    ].join(';');
+
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 16px 12px;border-bottom:1px solid #e2e8f0;';
+    const headText = document.createElement('div');
+
+    const title = document.createElement('h2');
+    title.id = 'pendingChangesTitle';
+    title.textContent = 'Pending changes';
+    title.style.cssText = 'margin:0;font-size:18px;line-height:1.3;font-weight:800;color:#0f172a;';
+
+    const sub = document.createElement('p');
+    sub.id = 'pendingChangesSubtitle';
+    sub.textContent = 'Changes saved on this device that have not reached the Google Sheet yet.';
+    sub.style.cssText = 'margin:4px 0 0;font-size:12px;line-height:1.45;color:#64748b;';
+
+    headText.append(title, sub);
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.textContent = '✕';
+    close.setAttribute('aria-label', 'Close pending changes');
+    close.style.cssText = 'flex:0 0 auto;width:34px;height:34px;border-radius:10px;background:#f1f5f9;font-weight:800;color:#334155;';
+    close.addEventListener('click', waClosePendingChanges);
+
+    head.append(headText, close);
+
+    const toolbar = document.createElement('div');
+    toolbar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;';
+
+    const count = document.createElement('span');
+    count.id = 'pendingChangesCount';
+    count.style.cssText = 'font-size:12px;font-weight:700;color:#475569;';
+
+    const retryAll = document.createElement('button');
+    retryAll.type = 'button';
+    retryAll.id = 'pendingRetryAllBtn';
+    retryAll.textContent = 'Retry all';
+    retryAll.style.cssText = 'border-radius:10px;background:#4f46e5;color:white;padding:7px 11px;font-size:12px;font-weight:800;';
+    retryAll.addEventListener('click', async () => {
+      retryAll.disabled = true;
+      retryAll.textContent = 'Retrying…';
+      await waSyncPending();
+      await waRenderPendingChanges();
+      retryAll.disabled = false;
+      retryAll.textContent = 'Retry all';
+    });
+
+    toolbar.append(count, retryAll);
+
+    const list = document.createElement('div');
+    list.id = 'pendingChangesList';
+    list.style.cssText = 'padding:12px 16px 16px;display:grid;gap:10px;max-height:65vh;overflow:auto;';
+
+    panel.append(head, toolbar, list);
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', event => {
+      if (event.target === overlay) waClosePendingChanges();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !overlay.hidden) waClosePendingChanges();
+    });
+  }
+
+  return { bar, text, button, overlay };
+}
+
+async function waRenderPendingChanges() {
+  const ui = waEnsurePendingUi();
+  if (!ui) return;
+
+  let events = [];
+  try { events = waPendingEventsSorted_(await waDbGetAll('queue')); } catch (_) {}
+
+  const list = document.getElementById('pendingChangesList');
+  const count = document.getElementById('pendingChangesCount');
+  const retryAll = document.getElementById('pendingRetryAllBtn');
+  if (!list || !count || !retryAll) return;
+
+  count.textContent = events.length + ' pending change' + (events.length === 1 ? '' : 's');
+  retryAll.disabled = !events.length || !waCanTryServer();
+  retryAll.style.opacity = retryAll.disabled ? '.5' : '1';
+
+  list.replaceChildren();
+
+  if (!events.length) {
+    const empty = document.createElement('div');
+    empty.textContent = 'Everything is synced.';
+    empty.style.cssText = 'padding:24px 8px;text-align:center;color:#64748b;font-size:13px;font-weight:700;';
+    list.appendChild(empty);
+    return;
+  }
+
+  events.forEach(event => {
+    const card = document.createElement('div');
+    card.style.cssText = 'border:1px solid #cbd5e1;border-radius:14px;padding:12px;background:white;';
+
+    const top = document.createElement('div');
+    top.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:10px;';
+
+    const titleWrap = document.createElement('div');
+    titleWrap.style.cssText = 'min-width:0;';
+
+    const item = document.createElement('div');
+    item.textContent = String(event.item || 'Unnamed item');
+    item.style.cssText = 'font-size:15px;font-weight:800;color:#0f172a;overflow-wrap:anywhere;';
+
+    const action = document.createElement('div');
+    action.textContent = waPendingEventAction_(event);
+    action.style.cssText = 'margin-top:2px;font-size:12px;font-weight:700;color:#475569;';
+
+    titleWrap.append(item, action);
+
+    const qty = document.createElement('div');
+    const q = Number(event.quantity);
+    qty.textContent = Number.isFinite(q) ? 'Qty ' + q : '';
+    qty.style.cssText = 'flex:0 0 auto;font-size:11px;font-weight:800;color:#4338ca;background:#eef2ff;border:1px solid #c7d2fe;border-radius:999px;padding:3px 7px;';
+
+    top.append(titleWrap, qty);
+
+    const meta = document.createElement('div');
+    const loc = waPendingEventLocation_(event);
+    meta.textContent = [loc, waPendingEventTime_(event)].filter(Boolean).join(' • ');
+    meta.style.cssText = 'margin-top:7px;font-size:11px;line-height:1.45;color:#64748b;';
+
+    card.append(top, meta);
+
+    if (event._lastSyncError) {
+      const err = document.createElement('div');
+      err.textContent = 'Last sync error: ' + String(event._lastSyncError);
+      err.style.cssText = 'margin-top:8px;padding:7px 8px;border-radius:9px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:11px;line-height:1.4;font-weight:650;overflow-wrap:anywhere;';
+      card.appendChild(err);
+    }
+
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:8px;margin-top:10px;';
+
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.textContent = 'Retry';
+    retry.style.cssText = 'flex:1;border-radius:10px;background:#4f46e5;color:white;padding:8px 10px;font-size:12px;font-weight:800;';
+    retry.disabled = !waCanTryServer();
+    retry.style.opacity = retry.disabled ? '.5' : '1';
+    retry.addEventListener('click', async () => {
+      retry.disabled = true;
+      retry.textContent = 'Retrying…';
+      await waRetryPendingEvent(event.eventId);
+      await waRenderPendingChanges();
+    });
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.textContent = 'Remove';
+    remove.style.cssText = 'flex:1;border-radius:10px;background:#fff;color:#b91c1c;border:1px solid #fecaca;padding:8px 10px;font-size:12px;font-weight:800;';
+    remove.addEventListener('click', async () => {
+      await waRemovePendingEvent(event.eventId, event.item);
+    });
+
+    actions.append(retry, remove);
+    card.appendChild(actions);
+    list.appendChild(card);
+  });
+}
+
+async function waOpenPendingChanges() {
+  const ui = waEnsurePendingUi();
+  if (!ui) return;
+  await waRenderPendingChanges();
+  ui.overlay.hidden = false;
+  ui.overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function waClosePendingChanges() {
+  const overlay = document.getElementById('pendingChangesOverlay');
+  if (!overlay) return;
+  overlay.hidden = true;
+  overlay.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+async function waRetryPendingEvent(eventId) {
+  if (!waCanTryServer()) {
+    alert('No connection is available right now. This change will remain queued.');
+    return;
+  }
+  if (waSyncInProgress) {
+    alert('Automatic sync is already running. Try this item again after that sync attempt finishes.');
+    return;
+  }
+
+  const event = await waDbGet('queue', eventId);
+  if (!event) {
+    await waUpdateStatus();
+    return;
+  }
+
+  waSyncInProgress = true;
+  try {
+    await waUpdateStatus('Syncing…');
+    try {
+      await waSendQueuedEvent(event);
+      await waDbDelete('queue', eventId);
+      await waDbPut('kv', new Date().toISOString(), 'lastSync');
+    } catch (err) {
+      event._lastSyncError = err && err.message ? err.message : String(err);
+      event._lastSyncAttempt = new Date().toISOString();
+      await waDbPut('queue', event);
+    }
+  } finally {
+    waSyncInProgress = false;
+    await waUpdateStatus();
+  }
+
+  if (waCanTryServer()) {
+    setTimeout(() => { waWarmInventoryCache(); }, 900);
+  }
+}
+
+async function waRemovePendingEvent(eventId, itemName) {
+  const label = String(itemName || 'this change');
+  const ok = window.confirm(
+    'Remove the unsynced change for "' + label + '"?\n\n' +
+    'This discards it from this device and it will NOT be sent to the Google Sheet.'
+  );
+  if (!ok) return;
+
+  await waDbDelete('queue', eventId);
+  await waUpdateStatus();
+  await waRenderPendingChanges();
+
+  // A queued event may already have been projected into cached inventory.
+  // Refresh authoritative inventory when possible after discarding it.
+  if (waCanTryServer()) {
+    setTimeout(() => { waWarmInventoryCache(); }, 250);
+  }
+}
+
+
+async function waUpdateStatus(message) {
+  const ui = waEnsurePendingUi();
+  const bar = ui && ui.bar;
+  const text = ui && ui.text;
+  const pendingButton = ui && ui.button;
+  if (!bar || !text || !pendingButton) return;
 
   const online = waCanTryServer();
   let pending = 0;
@@ -143,7 +494,15 @@ async function waUpdateStatus(message) {
 
   let label = message || (online ? 'Online' : 'Offline');
   if (!online && message && !/^Offline\b/i.test(message)) label = 'Offline • ' + message;
-  if (pending) label += ' • ' + pending + ' change' + (pending === 1 ? '' : 's') + ' waiting to sync';
+
+  if (pending) {
+    const alreadyMentionsPending = /waiting to sync/i.test(label);
+    if (!alreadyMentionsPending && !/syncing/i.test(label)) {
+      label += ' • ' + pending + ' change' + (pending === 1 ? '' : 's') + ' waiting to sync';
+    } else if (/waiting to sync/i.test(label) && !new RegExp('\\b' + pending + '\\b').test(label)) {
+      label = label.replace(/waiting to sync/i, pending + ' change' + (pending === 1 ? '' : 's') + ' waiting to sync');
+    }
+  }
 
   if (lastSync) {
     const when = new Date(lastSync);
@@ -155,10 +514,39 @@ async function waUpdateStatus(message) {
   }
 
   text.textContent = label + ' • v' + WA_APP_VERSION;
-  bar.className = 'px-4 py-1.5 text-center text-[11px] font-bold border-b ' +
+
+  bar.className = 'px-4 py-1.5 text-[11px] font-bold border-b ' +
     (!online ? 'bg-amber-100 text-amber-900 border-amber-200' :
       pending ? 'bg-blue-50 text-blue-800 border-blue-200' :
       'bg-emerald-50 text-emerald-800 border-emerald-200');
+
+  if (pending) {
+    bar.style.display = 'flex';
+    bar.style.alignItems = 'center';
+    bar.style.justifyContent = 'center';
+    bar.style.gap = '8px';
+    bar.style.textAlign = 'left';
+    text.style.minWidth = '0';
+
+    pendingButton.hidden = false;
+    pendingButton.style.display = 'inline-block';
+    pendingButton.textContent = 'Pending (' + pending + ') ›';
+  } else {
+    bar.style.display = 'block';
+    bar.style.textAlign = 'center';
+    pendingButton.hidden = true;
+    pendingButton.style.display = 'none';
+
+    const overlay = document.getElementById('pendingChangesOverlay');
+    if (overlay && !overlay.hidden) {
+      await waRenderPendingChanges();
+    }
+  }
+
+  const overlay = document.getElementById('pendingChangesOverlay');
+  if (overlay && !overlay.hidden) {
+    await waRenderPendingChanges();
+  }
 }
 
 async function apiGetToolItems() {
@@ -250,7 +638,11 @@ async function apiGetInventory(tabKey) {
 }
 
 async function waSendQueuedEvent(event) {
-  const res = await waJsonp('submit', { payload: JSON.stringify(event) }, 30000);
+  const payload = { ...event };
+  delete payload._lastSyncError;
+  delete payload._lastSyncAttempt;
+
+  const res = await waJsonp('submit', { payload: JSON.stringify(payload) }, 30000);
   if (!res || !res.success) throw new Error(res && res.error ? res.error : 'Save failed');
   return res;
 }
@@ -491,10 +883,10 @@ async function waSyncPending() {
 
   waSyncInProgress = true;
   let syncedAny = false;
-  let failed = false;
+  let failedAny = false;
 
   try {
-    const events = await waDbGetAll('queue');
+    const events = waPendingEventsSorted_(await waDbGetAll('queue'));
     if (!events.length) {
       await waUpdateStatus();
       return;
@@ -502,38 +894,42 @@ async function waSyncPending() {
 
     await waUpdateStatus('Syncing…');
 
+    // Try every queued event. A single bad/legacy event should not block valid
+    // changes behind it in the queue.
     for (const event of events) {
       try {
         await waSendQueuedEvent(event);
         await waDbDelete('queue', event.eventId);
         syncedAny = true;
-        // Update the count after each successful event so the status bar visibly
-        // counts down instead of appearing stuck until the whole queue finishes.
-        await waUpdateStatus('Syncing…');
       } catch (err) {
-        failed = true;
-        console.warn('Sync paused:', err);
-        break;
+        failedAny = true;
+        event._lastSyncError = err && err.message ? err.message : String(err);
+        event._lastSyncAttempt = new Date().toISOString();
+        try { await waDbPut('queue', event); } catch (_) {}
+        console.warn('Queued event failed to sync:', event.item, err);
       }
+
+      // Update the count after every attempt so the status and Pending screen
+      // show which entries remain.
+      await waUpdateStatus(failedAny ? 'Waiting to sync' : 'Syncing…');
     }
 
     if (syncedAny) {
       await waDbPut('kv', new Date().toISOString(), 'lastSync');
     }
 
-    await waUpdateStatus(failed ? 'Waiting to sync' : undefined);
+    await waUpdateStatus(failedAny ? 'Waiting to sync' : undefined);
 
-    if (!failed) {
-      // Replace projected local quantities with the Sheet's authoritative values
-      // after Apps Script/formulas have had a moment to settle.
+    if (syncedAny) {
+      // Replace optimistic local quantities with authoritative Sheet values.
       setTimeout(() => { waWarmInventoryCache(); }, 900);
     }
   } finally {
     waSyncInProgress = false;
 
-    // If a new event was added while this sync pass was already running,
-    // make sure it gets its own pass instead of waiting for another app event.
-    if (!failed && waCanTryServer()) {
+    // Do not spin endlessly retrying known failures. New events or an explicit
+    // Retry/Retry all action can start another pass.
+    if (!failedAny && waCanTryServer()) {
       try {
         const remaining = await waPendingCount();
         if (remaining) setTimeout(() => { waSyncPending(); }, 250);

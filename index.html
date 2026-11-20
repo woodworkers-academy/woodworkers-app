@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.21.0">
+  <link rel="stylesheet" href="./styles.css?v=1.21.1">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -64,7 +64,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.21.0</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.21.1</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -220,16 +220,16 @@
         </div>
 
         <div class="mt-4">
-          <label for="checklistEmployee" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Employee taking van</label>
-          <select id="checklistEmployee" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500">
-            <option value="">Select your name…</option>
-            <option value="Kyle Meyer">Kyle Meyer</option>
-            <option value="Matt Pursley">Matt Pursley</option>
-            <option value="Peter Bissell">Peter Bissell</option>
-            <option value="Ryan Bonner">Ryan Bonner</option>
-            <option value="Nick Hutter">Nick Hutter</option>
-            <option value="Taylor Weber">Taylor Weber</option>
-          </select>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Employee taking van</label>
+          <input type="hidden" id="checklistEmployee" value="">
+          <div id="checklistEmployeeTileGrid" class="choice-grid grid grid-cols-3 gap-2">
+            <button type="button" onclick="selectChecklistEmployeeTile(this, 'Kyle Meyer')" class="checklist-employee-tile choice-tile" aria-pressed="false">Kyle Meyer</button>
+            <button type="button" onclick="selectChecklistEmployeeTile(this, 'Matt Pursley')" class="checklist-employee-tile choice-tile" aria-pressed="false">Matt Pursley</button>
+            <button type="button" onclick="selectChecklistEmployeeTile(this, 'Peter Bissell')" class="checklist-employee-tile choice-tile" aria-pressed="false">Peter Bissell</button>
+            <button type="button" onclick="selectChecklistEmployeeTile(this, 'Ryan Bonner')" class="checklist-employee-tile choice-tile" aria-pressed="false">Ryan Bonner</button>
+            <button type="button" onclick="selectChecklistEmployeeTile(this, 'Nick Hutter')" class="checklist-employee-tile choice-tile" aria-pressed="false">Nick Hutter</button>
+            <button type="button" onclick="selectChecklistEmployeeTile(this, 'Taylor Weber')" class="checklist-employee-tile choice-tile" aria-pressed="false">Taylor Weber</button>
+          </div>
         </div>
 
         <div class="mt-4">
@@ -250,7 +250,7 @@
 
         <div class="checklist-heading">Every time</div>
         <div class="checklist-group">
-          <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Open hood" onchange="persistChecklistChecks('end')"><span>Open hood</span></label>
+          <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Open hood unless rain is expected" onchange="persistChecklistChecks('end')"><span>Open hood unless rain is expected</span></label>
           <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Mousetraps set" onchange="persistChecklistChecks('end')"><span>Mousetraps set</span></label>
           <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Van locked" onchange="persistChecklistChecks('end')"><span>Van locked</span></label>
           <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Key returned" onchange="persistChecklistChecks('end')"><span>Key returned</span></label>
@@ -272,7 +272,7 @@
           <label class="flex items-center gap-2 mt-2 text-xs font-bold text-amber-800"><input id="checklistEndUrgent" type="checkbox" class="w-4 h-4"> Needs attention before next use</label>
         </div>
 
-        <button id="checklistReviewBtn" type="button" onclick="reviewVanReturn()" class="checklist-primary mt-4">Review &amp; Return Van</button>
+        <button id="checklistReviewBtn" type="button" onclick="reviewVanReturn()" class="checklist-primary mt-7">Review &amp; Return Van</button>
 
         <div id="checklistReturnReview" class="hidden mt-4 p-3 rounded-xl border border-indigo-200 bg-indigo-50 space-y-2">
           <h3 class="text-sm font-extrabold text-indigo-950">Return review</h3>
@@ -548,7 +548,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.21.0"></script>
+  <script src="pwa.js?v=1.21.1"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -1172,6 +1172,13 @@
       section.classList.toggle('hidden', entries.length === 0 && urgentNotes.length === 0);
     }
 
+    function selectChecklistEmployeeTile(button, employeeName) {
+      document.getElementById('checklistEmployee').value = employeeName;
+      document.querySelectorAll('.checklist-employee-tile').forEach(function(tile) {
+        tile.setAttribute('aria-pressed', String(tile === button));
+      });
+    }
+
     function checklistResolvingEmployee() {
       const active = currentVanChecklistState && currentVanChecklistState.activeCheckout;
       if (active && active.employee) return active.employee;
@@ -1182,7 +1189,7 @@
       const employee = checklistResolvingEmployee();
       if (!employee) {
         alert('Select your name first so the resolution is recorded.');
-        document.getElementById('checklistEmployee').focus();
+        document.getElementById('checklistEmployeeTileGrid').scrollIntoView({ behavior:'smooth', block:'center' });
         return;
       }
       try {
@@ -1201,7 +1208,7 @@
       const employee = String(document.getElementById('checklistEmployee').value || '').trim();
       if (!employee) {
         alert('Select the employee taking the van.');
-        document.getElementById('checklistEmployee').focus();
+        document.getElementById('checklistEmployeeTileGrid').scrollIntoView({ behavior:'smooth', block:'center' });
         return;
       }
       const btn = document.getElementById('checklistSignOutBtn');
@@ -1219,6 +1226,8 @@
         clearChecklistChecks(currentChecklistVan, 'start');
         document.getElementById('checklistStartNote').value = '';
         document.getElementById('checklistStartUrgent').checked = false;
+        document.getElementById('checklistEmployee').value = '';
+        document.querySelectorAll('.checklist-employee-tile').forEach(function(tile) { tile.setAttribute('aria-pressed', 'false'); });
         vanChecklistOverview[currentChecklistVan] = { active:true, employee:result.employee, signOutTime:result.signOutTime, sessionId:result.sessionId };
         updateChecklistOverviewButtons();
         await loadVanChecklistState(currentChecklistVan);
@@ -1239,24 +1248,38 @@
       return map;
     }
 
+    function checklistAuditExceptions(rows) {
+      return (rows || []).filter(function(row) {
+        const quantity = Number(row.quantity) || 0;
+        const baseline = Number(row.baseline) || 0;
+        const notes = String(row.notes || '').trim();
+        const needsReplenishment = Boolean(row.pwaNeedsReplenishment);
+        return quantity !== baseline || Boolean(notes) || needsReplenishment;
+      });
+    }
+
     function compareChecklistInventory(startRows, currentRows) {
+      // Checkout Inventory stores exceptions only. An omitted row means that item
+      // was at its baseline with no unresolved item note at that phase.
       const startMap = inventorySnapshotMap(startRows);
-      const currentMap = inventorySnapshotMap(currentRows);
+      const currentMap = inventorySnapshotMap(checklistAuditExceptions(currentRows));
       const keys = new Set(Array.from(startMap.keys()).concat(Array.from(currentMap.keys())));
       const changes = [];
       keys.forEach(function(key) {
-        const before = startMap.get(key) || {};
-        const after = currentMap.get(key) || {};
-        const bq = Number(before.quantity) || 0;
-        const aq = Number(after.quantity) || 0;
+        const before = startMap.get(key) || null;
+        const after = currentMap.get(key) || null;
+        const reference = after || before || {};
+        const baseline = Number(reference.baseline) || 0;
+        const bq = before ? (Number(before.quantity) || 0) : baseline;
+        const aq = after ? (Number(after.quantity) || 0) : baseline;
         if (bq === aq) return;
         changes.push({
-          item: after.item || before.item || 'Item',
-          area: after.area || before.area || '',
-          bin: after.bin || before.bin || '',
+          item: (after && after.item) || (before && before.item) || 'Item',
+          area: (after && after.area) || (before && before.area) || '',
+          bin: (after && after.bin) || (before && before.bin) || '',
           before: bq,
           after: aq,
-          notes: String(after.notes || before.notes || '').trim()
+          notes: String((after && after.notes) || (before && before.notes) || '').trim()
         });
       });
       return changes;

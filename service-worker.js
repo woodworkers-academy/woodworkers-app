@@ -1,9 +1,9 @@
-const CACHE_NAME = 'van-inventory-shell-v1.21.0';
+const CACHE_NAME = 'van-inventory-shell-v1.21.1';
 const APP_SHELL = [
   './',
   './index.html',
-  './styles.css?v=1.21.0',
-  './pwa.js?v=1.21.0',
+  './styles.css?v=1.21.1',
+  './pwa.js?v=1.21.1',
   './manifest.webmanifest',
   './icon-180.png',
   './icon-192.png',

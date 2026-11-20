@@ -6,7 +6,7 @@ const WA_API_URL = 'https://script.google.com/macros/s/AKfycbzydKDcX1IORJR0stTOm
 const WA_API_KEY = 'wa_7uK4nP9qR2mX8cV5sD1fH6jL3bT0yE';
 const WA_DB_NAME = 'woodworkers-van-inventory';
 const WA_DB_VERSION = 1;
-const WA_APP_VERSION = '1.20.22';
+const WA_APP_VERSION = '1.21.0';
 let waDbPromise = null;
 let waSyncInProgress = false;
 let waServerState = 'unknown'; // unknown | live | unreachable
@@ -713,6 +713,42 @@ async function waSendQueuedEvent(event) {
   return res;
 }
 
+
+
+async function apiGetVanChecklistOverview() {
+  if (!waCanTryServer()) throw new Error('A live connection is required.');
+  const res = await waJsonp('vanChecklistOverview', {}, 15000, { affectsHealth: true });
+  if (!res || !res.success) throw new Error(res && res.error ? res.error : 'Checklist overview failed');
+  return res.data || {};
+}
+
+async function apiGetVanChecklistState(van) {
+  if (!waCanTryServer()) throw new Error('A live connection is required.');
+  const res = await waJsonp('vanChecklistState', { van: String(van) }, 20000, { affectsHealth: true });
+  if (!res || !res.success) throw new Error(res && res.error ? res.error : 'Checklist request failed');
+  return res.data || {};
+}
+
+async function apiSignOutVan(payload) {
+  if (!waCanTryServer()) throw new Error('A live connection is required to capture the sign-out inventory snapshot.');
+  const res = await waJsonp('vanSignOut', { payload: JSON.stringify(payload || {}) }, 30000, { affectsHealth: true });
+  if (!res || !res.success) throw new Error(res && res.error ? res.error : 'Van sign-out failed');
+  return res.data || {};
+}
+
+async function apiReturnVan(payload) {
+  if (!waCanTryServer()) throw new Error('A live connection is required to capture the return inventory snapshot.');
+  const res = await waJsonp('vanReturn', { payload: JSON.stringify(payload || {}) }, 30000, { affectsHealth: true });
+  if (!res || !res.success) throw new Error(res && res.error ? res.error : 'Van return failed');
+  return res.data || {};
+}
+
+async function apiResolveVanNote(payload) {
+  if (!waCanTryServer()) throw new Error('A live connection is required.');
+  const res = await waJsonp('vanResolveNote', { payload: JSON.stringify(payload || {}) }, 20000, { affectsHealth: true });
+  if (!res || !res.success) throw new Error(res && res.error ? res.error : 'Could not resolve van note');
+  return res.data || {};
+}
 
 
 function waLocationInfo(location, areaHint = '') {

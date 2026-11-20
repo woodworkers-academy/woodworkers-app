@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="Woodworkers Academy">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=1.20.22">
+  <link rel="stylesheet" href="./styles.css?v=1.21.0">
   <style>
     * { -webkit-tap-highlight-color: transparent; }
     .autocomplete-items div:active { background-color: #e0e7ff; }
@@ -35,6 +35,23 @@
     .van-bin-tile[aria-pressed="true"] [data-bin-count] { background:var(--tile-active)!important; color:white!important; }
     #activeBinHeader[data-van] { background:var(--tile-selected)!important; border-color:var(--tile-border)!important; }
     #activeBinHeader[data-van] span, #activeBinHeader[data-van] button, #btnBinAll[data-van] { color:var(--tile-text)!important; }
+
+    .checklist-van-btn { border:1px solid #cbd5e1; border-radius:12px; padding:10px 8px; background:#fff; color:#334155; font-size:12px; font-weight:800; text-align:center; }
+    .checklist-van-btn[aria-pressed="true"] { border-color:#4f46e5; background:#eef2ff; color:#4338ca; box-shadow:0 0 0 1px #4f46e5 inset; }
+    .checklist-status { display:block; margin-top:3px; font-size:9px; font-weight:700; color:#64748b; line-height:1.2; }
+    .checklist-status.out { color:#b45309; }
+    .checklist-group { border:1px solid #e2e8f0; border-radius:14px; overflow:hidden; background:#fff; }
+    .checklist-row { display:flex; align-items:flex-start; gap:10px; padding:11px 12px; border-top:1px solid #f1f5f9; font-size:13px; font-weight:650; color:#334155; }
+    .checklist-row:first-child { border-top:0; }
+    .checklist-row input { width:20px; height:20px; flex:0 0 auto; margin-top:0; accent-color:#4f46e5; }
+    .checklist-heading { font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#64748b; margin:14px 0 6px; }
+    .van-note-card { border:1px solid #e2e8f0; background:#f8fafc; border-radius:12px; padding:10px 11px; }
+    .van-note-card.urgent { border-color:#f59e0b; background:#fffbeb; }
+    .van-note-meta { font-size:10px; color:#64748b; margin-top:4px; }
+    .van-note-resolve { margin-top:8px; border:1px solid #cbd5e1; border-radius:9px; padding:6px 9px; background:white; color:#334155; font-size:11px; font-weight:800; }
+    .checklist-primary { width:100%; border:0; border-radius:12px; padding:13px 14px; background:#4f46e5; color:#fff; font-size:14px; font-weight:900; box-shadow:0 2px 4px rgba(15,23,42,.12); }
+    .checklist-primary:disabled { opacity:.5; }
+    .checklist-review-change { padding:8px 10px; border-radius:10px; background:#f8fafc; border:1px solid #e2e8f0; font-size:12px; }
   </style>
 </head>
 <body class="log-mode bg-slate-100 text-slate-900 min-h-screen flex flex-col font-sans pb-12">
@@ -47,7 +64,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.20.22</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.21.0</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -57,12 +74,12 @@
       </button>
     </div>
     <!-- Top-Level Mode Navigation -->
-    <div class="grid grid-cols-2 gap-1.5 p-1 bg-indigo-800/60 rounded-xl text-xs font-semibold">
+    <div class="grid grid-cols-3 gap-1.5 p-1 bg-indigo-800/60 rounded-xl text-[10px] font-semibold">
       <button 
         type="button" 
         id="modeBtnLog" 
         onclick="switchTopMode('log')" 
-        class="py-2 rounded-lg text-center bg-white text-indigo-700 shadow-sm transition-all"
+        class="py-2 rounded-lg text-center bg-white text-indigo-700 shadow-sm transition-all leading-tight"
       >
         📝 Log Tool Event
       </button>
@@ -70,9 +87,17 @@
         type="button" 
         id="modeBtnInv" 
         onclick="switchTopMode('inventory')" 
-        class="py-2 rounded-lg text-center text-indigo-100 hover:text-white transition-all"
+        class="py-2 rounded-lg text-center text-indigo-100 hover:text-white transition-all leading-tight"
       >
         📦 View Live Inventory
+      </button>
+      <button
+        type="button"
+        id="modeBtnChecklist"
+        onclick="switchTopMode('checklist')"
+        class="py-2 rounded-lg text-center text-indigo-100 hover:text-white transition-all leading-tight"
+      >
+        ✅ Van Checklist
       </button>
     </div>
   </header>
@@ -147,6 +172,119 @@
     <!-- Inventory Item Cards Container -->
     <div id="invCardsList" class="space-y-2"></div>
   </div>
+
+  <!-- ========================================== -->
+  <!-- 2. VAN CHECKLIST MODE                      -->
+  <!-- ========================================== -->
+  <div id="checklistContainer" class="hidden max-w-md w-full mx-auto p-4 flex-1 space-y-3">
+    <div class="grid grid-cols-3 gap-2" aria-label="Choose van">
+      <button type="button" id="checklistVan2015" class="checklist-van-btn" onclick="selectChecklistVan('2015')" aria-pressed="true">2015 Van<span id="checklistStatus2015" class="checklist-status">Loading…</span></button>
+      <button type="button" id="checklistVan2021" class="checklist-van-btn" onclick="selectChecklistVan('2021')" aria-pressed="false">2021 Van<span id="checklistStatus2021" class="checklist-status">Loading…</span></button>
+      <button type="button" id="checklistVan2026" class="checklist-van-btn" onclick="selectChecklistVan('2026')" aria-pressed="false">2026 Van<span id="checklistStatus2026" class="checklist-status">Loading…</span></button>
+    </div>
+
+    <div id="checklistLoading" class="p-8 text-center text-slate-400 text-xs">Loading van checklist…</div>
+    <div id="checklistError" class="hidden p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold"></div>
+
+    <div id="checklistContent" class="hidden space-y-3">
+      <section id="checklistAttentionSection" class="hidden rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 space-y-3">
+        <div>
+          <h2 class="text-base font-extrabold text-amber-950">⚠ Needs attention before departure</h2>
+          <p class="text-xs font-semibold text-amber-900 mt-1">Open van notes and inventory discrepancies that should be seen before this van leaves.</p>
+        </div>
+        <div id="checklistUrgentNotes" class="space-y-2"></div>
+        <div id="checklistInventoryAttention" class="space-y-2"></div>
+      </section>
+
+      <section id="checklistNormalNotesSection" class="hidden rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
+        <h2 class="text-sm font-extrabold text-slate-800">Van notes</h2>
+        <div id="checklistNormalNotes" class="space-y-2"></div>
+      </section>
+
+      <section id="checklistStartSection" class="hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="mb-2">
+          <h2 class="text-lg font-extrabold text-slate-900">Start of Day</h2>
+          <p class="text-xs text-slate-500 mt-1">Check these off as you go. They are reminders only and do not block sign-out.</p>
+        </div>
+
+        <div class="checklist-heading">Every time</div>
+        <div class="checklist-group">
+          <label class="checklist-row"><input type="checkbox" data-checklist="start" data-label="Check lumber stock" onchange="persistChecklistChecks('start')"><span>Check lumber stock</span></label>
+          <label class="checklist-row"><input type="checkbox" data-checklist="start" data-label="Check van inventory tab" onchange="persistChecklistChecks('start')"><span>Check van inventory tab</span></label>
+        </div>
+
+        <div class="checklist-heading">If needed</div>
+        <div class="checklist-group">
+          <label class="checklist-row"><input type="checkbox" data-checklist="start" data-label="Bring batteries" onchange="persistChecklistChecks('start')"><span>Bring batteries</span></label>
+          <label class="checklist-row"><input type="checkbox" data-checklist="start" data-label="Bring speaker" onchange="persistChecklistChecks('start')"><span>Bring speaker</span></label>
+        </div>
+
+        <div class="mt-4">
+          <label for="checklistEmployee" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Employee taking van</label>
+          <select id="checklistEmployee" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">Select your name…</option>
+            <option value="Kyle Meyer">Kyle Meyer</option>
+            <option value="Matt Pursley">Matt Pursley</option>
+            <option value="Peter Bissell">Peter Bissell</option>
+            <option value="Ryan Bonner">Ryan Bonner</option>
+            <option value="Nick Hutter">Nick Hutter</option>
+            <option value="Taylor Weber">Taylor Weber</option>
+          </select>
+        </div>
+
+        <div class="mt-4">
+          <label for="checklistStartNote" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Add van note <span class="normal-case font-normal">(optional)</span></label>
+          <textarea id="checklistStartNote" rows="2" maxlength="500" placeholder="Anything the next driver should know…" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+          <label class="flex items-center gap-2 mt-2 text-xs font-bold text-amber-800"><input id="checklistStartUrgent" type="checkbox" class="w-4 h-4"> Needs attention before next use</label>
+        </div>
+
+        <button id="checklistSignOutBtn" type="button" onclick="signOutSelectedVan()" class="checklist-primary mt-4">Sign Out Van</button>
+      </section>
+
+      <section id="checklistEndSection" class="hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div class="mb-3">
+          <h2 class="text-lg font-extrabold text-slate-900">End of Day</h2>
+          <p id="checklistSignedOutBy" class="text-xs font-semibold text-indigo-700 mt-1"></p>
+          <p class="text-xs text-slate-500 mt-1">Check these off as you go. They are reminders only.</p>
+        </div>
+
+        <div class="checklist-heading">Every time</div>
+        <div class="checklist-group">
+          <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Open hood" onchange="persistChecklistChecks('end')"><span>Open hood</span></label>
+          <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Mousetraps set" onchange="persistChecklistChecks('end')"><span>Mousetraps set</span></label>
+          <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Van locked" onchange="persistChecklistChecks('end')"><span>Van locked</span></label>
+          <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Key returned" onchange="persistChecklistChecks('end')"><span>Key returned</span></label>
+        </div>
+
+        <div class="checklist-heading">If needed</div>
+        <div class="checklist-group">
+          <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="All tool events logged" onchange="persistChecklistChecks('end')"><span>All tool events logged</span></label>
+          <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Broken tools moved to Broken Bin" onchange="persistChecklistChecks('end')"><span>Broken tools moved to Broken Bin</span></label>
+          <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Replenish lumber" onchange="persistChecklistChecks('end')"><span>Replenish lumber</span></label>
+          <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Replenish materials / hardware" onchange="persistChecklistChecks('end')"><span>Replenish materials / hardware</span></label>
+          <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Bring in batteries to charge" onchange="persistChecklistChecks('end')"><span>Bring in batteries to charge</span></label>
+          <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Bring in speaker to charge" onchange="persistChecklistChecks('end')"><span>Bring in speaker to charge</span></label>
+        </div>
+
+        <div class="mt-4">
+          <label for="checklistEndNote" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Add van note <span class="normal-case font-normal">(optional)</span></label>
+          <textarea id="checklistEndNote" rows="2" maxlength="500" placeholder="Anything the next driver should know…" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+          <label class="flex items-center gap-2 mt-2 text-xs font-bold text-amber-800"><input id="checklistEndUrgent" type="checkbox" class="w-4 h-4"> Needs attention before next use</label>
+        </div>
+
+        <button id="checklistReviewBtn" type="button" onclick="reviewVanReturn()" class="checklist-primary mt-4">Review &amp; Return Van</button>
+
+        <div id="checklistReturnReview" class="hidden mt-4 p-3 rounded-xl border border-indigo-200 bg-indigo-50 space-y-2">
+          <h3 class="text-sm font-extrabold text-indigo-950">Return review</h3>
+          <p id="checklistReturnSummary" class="text-xs text-indigo-900"></p>
+          <div id="checklistReturnChanges" class="space-y-1.5"></div>
+          <p class="text-[11px] text-indigo-900 font-semibold">Returning the van records a fresh live inventory snapshot and confirms the current quantities, statuses, and unresolved notes for this van.</p>
+          <button id="checklistReturnBtn" type="button" onclick="returnSelectedVan()" class="checklist-primary">Return Van</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
   <!-- ========================================== -->
   <!-- 2. LOG TOOL MOVEMENT MODE                  -->
   <!-- ========================================== -->
@@ -410,13 +548,16 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.20.22"></script>
+  <script src="pwa.js?v=1.21.0"></script>
   <script>
     let allItems = [];
     let currentAction = '';
-    let currentTopMode = 'log'; // 'log' | 'inventory'
+    let currentTopMode = 'log'; // 'log' | 'inventory' | 'checklist'
     let currentInvTab = 'attention'; // 'attention' | '2026' | '2021' | '2015' | 'class'
     let classStockToolNames = new Set();
+    let currentChecklistVan = '2015';
+    let vanChecklistOverview = {};
+    let currentVanChecklistState = null;
 
     function updateClassStockToolNames(rows) {
       classStockToolNames = new Set((rows || []).map(function(row) {
@@ -868,6 +1009,330 @@
     onOtherEventChange(document.getElementById('otherEventSub').value);
     onNeedsReplacementChange(document.getElementById('needsReplacementStatus').value);
 
+
+    function checklistStorageKey(phase) {
+      return 'wa-checklist-' + currentChecklistVan + '-' + phase;
+    }
+
+    function persistChecklistChecks(phase) {
+      const checked = Array.from(document.querySelectorAll('input[data-checklist="' + phase + '"]:checked'))
+        .map(function(input) { return input.dataset.label; });
+      try { sessionStorage.setItem(checklistStorageKey(phase), JSON.stringify(checked)); } catch (_) {}
+    }
+
+    function restoreChecklistChecks(phase) {
+      let checked = [];
+      try { checked = JSON.parse(sessionStorage.getItem(checklistStorageKey(phase)) || '[]'); } catch (_) {}
+      const set = new Set(Array.isArray(checked) ? checked : []);
+      document.querySelectorAll('input[data-checklist="' + phase + '"]').forEach(function(input) {
+        input.checked = set.has(input.dataset.label);
+      });
+    }
+
+    function clearChecklistChecks(van, phase) {
+      try { sessionStorage.removeItem('wa-checklist-' + van + '-' + phase); } catch (_) {}
+    }
+
+    function getCheckedChecklistItems(phase) {
+      return Array.from(document.querySelectorAll('input[data-checklist="' + phase + '"]:checked'))
+        .map(function(input) { return input.dataset.label; });
+    }
+
+    function selectChecklistVan(van) {
+      currentChecklistVan = String(van);
+      document.getElementById('checklistReturnReview').classList.add('hidden');
+      ['2015','2021','2026'].forEach(function(year) {
+        const btn = document.getElementById('checklistVan' + year);
+        if (btn) btn.setAttribute('aria-pressed', String(year === currentChecklistVan));
+      });
+      loadVanChecklistState(currentChecklistVan);
+    }
+
+    function formatChecklistTime(value) {
+      const d = new Date(value || '');
+      if (Number.isNaN(d.getTime())) return '';
+      return d.toLocaleString([], { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+    }
+
+    function updateChecklistOverviewButtons() {
+      ['2015','2021','2026'].forEach(function(van) {
+        const statusEl = document.getElementById('checklistStatus' + van);
+        const status = vanChecklistOverview && vanChecklistOverview[van];
+        if (!statusEl) return;
+        if (status && status.active) {
+          statusEl.textContent = 'Out • ' + status.employee;
+          statusEl.classList.add('out');
+        } else {
+          statusEl.textContent = 'Available';
+          statusEl.classList.remove('out');
+        }
+      });
+    }
+
+    async function loadVanChecklistOverview(forceSelectedReload) {
+      const error = document.getElementById('checklistError');
+      error.classList.add('hidden');
+      try {
+        vanChecklistOverview = await apiGetVanChecklistOverview();
+        updateChecklistOverviewButtons();
+        if (forceSelectedReload || !currentVanChecklistState || currentVanChecklistState.van !== currentChecklistVan) {
+          await loadVanChecklistState(currentChecklistVan);
+        }
+      } catch (err) {
+        error.textContent = 'Van checklist requires a live connection: ' + err.message;
+        error.classList.remove('hidden');
+        document.getElementById('checklistLoading').classList.add('hidden');
+      }
+    }
+
+    async function loadVanChecklistState(van) {
+      const loader = document.getElementById('checklistLoading');
+      const content = document.getElementById('checklistContent');
+      const error = document.getElementById('checklistError');
+      loader.classList.remove('hidden');
+      content.classList.add('hidden');
+      error.classList.add('hidden');
+      try {
+        const state = await apiGetVanChecklistState(van);
+        currentVanChecklistState = state;
+        invCache[van] = state.inventory || [];
+        invCache.summary = state.summary || [];
+        renderVanChecklistState();
+        loader.classList.add('hidden');
+        content.classList.remove('hidden');
+      } catch (err) {
+        loader.classList.add('hidden');
+        error.textContent = 'Could not load the live van checklist: ' + err.message;
+        error.classList.remove('hidden');
+      }
+    }
+
+    function renderVanChecklistState() {
+      const state = currentVanChecklistState || {};
+      const active = state.activeCheckout || null;
+      const start = document.getElementById('checklistStartSection');
+      const end = document.getElementById('checklistEndSection');
+      start.classList.toggle('hidden', Boolean(active));
+      end.classList.toggle('hidden', !active);
+      document.getElementById('checklistReturnReview').classList.add('hidden');
+
+      if (active) {
+        document.getElementById('checklistSignedOutBy').textContent = 'Signed out by ' + active.employee + ' • ' + formatChecklistTime(active.signOutTime);
+        restoreChecklistChecks('end');
+      } else {
+        restoreChecklistChecks('start');
+      }
+
+      renderChecklistNotes(state.notes || []);
+      renderChecklistInventoryAttention(state.inventory || []);
+    }
+
+    function renderChecklistNotes(notes) {
+      const urgentWrap = document.getElementById('checklistUrgentNotes');
+      const normalWrap = document.getElementById('checklistNormalNotes');
+      const normalSection = document.getElementById('checklistNormalNotesSection');
+      urgentWrap.replaceChildren();
+      normalWrap.replaceChildren();
+
+      const urgent = (notes || []).filter(function(note) { return note.needsAttention; });
+      const normal = (notes || []).filter(function(note) { return !note.needsAttention; });
+
+      urgent.forEach(function(note) { urgentWrap.appendChild(buildVanNoteCard(note, true)); });
+      normal.forEach(function(note) { normalWrap.appendChild(buildVanNoteCard(note, false)); });
+      normalSection.classList.toggle('hidden', normal.length === 0);
+    }
+
+    function buildVanNoteCard(note, urgent) {
+      const card = document.createElement('div');
+      card.className = 'van-note-card' + (urgent ? ' urgent' : '');
+      const text = document.createElement('div');
+      text.className = 'text-xs font-bold text-slate-800';
+      text.textContent = note.note;
+      const meta = document.createElement('div');
+      meta.className = 'van-note-meta';
+      meta.textContent = 'Added by ' + note.createdBy + (note.createdAt ? ' • ' + formatChecklistTime(note.createdAt) : '');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'van-note-resolve';
+      btn.textContent = 'Mark resolved';
+      btn.addEventListener('click', function() { resolveVanNoteFromChecklist(note.noteId); });
+      card.append(text, meta, btn);
+      return card;
+    }
+
+    function renderChecklistInventoryAttention(rows) {
+      const wrap = document.getElementById('checklistInventoryAttention');
+      const section = document.getElementById('checklistAttentionSection');
+      wrap.replaceChildren();
+      const entries = getBaselineDiscrepancies(rows || []);
+      entries.forEach(function(entry) {
+        wrap.appendChild(buildBaselineAlertCard(Object.assign({}, entry, { van: currentChecklistVan }), currentChecklistVan, true));
+      });
+      const urgentNotes = (currentVanChecklistState && currentVanChecklistState.notes || []).filter(function(note) { return note.needsAttention; });
+      section.classList.toggle('hidden', entries.length === 0 && urgentNotes.length === 0);
+    }
+
+    function checklistResolvingEmployee() {
+      const active = currentVanChecklistState && currentVanChecklistState.activeCheckout;
+      if (active && active.employee) return active.employee;
+      return String(document.getElementById('checklistEmployee').value || '').trim();
+    }
+
+    async function resolveVanNoteFromChecklist(noteId) {
+      const employee = checklistResolvingEmployee();
+      if (!employee) {
+        alert('Select your name first so the resolution is recorded.');
+        document.getElementById('checklistEmployee').focus();
+        return;
+      }
+      try {
+        await apiResolveVanNote({ noteId: noteId, employee: employee });
+        if (currentVanChecklistState) {
+          currentVanChecklistState.notes = (currentVanChecklistState.notes || []).filter(function(note) { return note.noteId !== noteId; });
+          renderChecklistNotes(currentVanChecklistState.notes);
+          renderChecklistInventoryAttention(currentVanChecklistState.inventory || []);
+        }
+      } catch (err) {
+        alert('Could not resolve note: ' + err.message);
+      }
+    }
+
+    async function signOutSelectedVan() {
+      const employee = String(document.getElementById('checklistEmployee').value || '').trim();
+      if (!employee) {
+        alert('Select the employee taking the van.');
+        document.getElementById('checklistEmployee').focus();
+        return;
+      }
+      const btn = document.getElementById('checklistSignOutBtn');
+      btn.disabled = true;
+      btn.textContent = 'Signing out…';
+      try {
+        const payload = {
+          van: currentChecklistVan,
+          employee: employee,
+          checklist: getCheckedChecklistItems('start'),
+          note: String(document.getElementById('checklistStartNote').value || '').trim(),
+          noteNeedsAttention: document.getElementById('checklistStartUrgent').checked
+        };
+        const result = await apiSignOutVan(payload);
+        clearChecklistChecks(currentChecklistVan, 'start');
+        document.getElementById('checklistStartNote').value = '';
+        document.getElementById('checklistStartUrgent').checked = false;
+        vanChecklistOverview[currentChecklistVan] = { active:true, employee:result.employee, signOutTime:result.signOutTime, sessionId:result.sessionId };
+        updateChecklistOverviewButtons();
+        await loadVanChecklistState(currentChecklistVan);
+      } catch (err) {
+        alert('Could not sign out van: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Sign Out Van';
+      }
+    }
+
+    function inventorySnapshotMap(rows) {
+      const map = new Map();
+      (rows || []).forEach(function(row) {
+        const key = [String(row.area || '').trim(), String(row.bin || '').trim(), String(row.item || '').trim()].join('||').toLowerCase();
+        map.set(key, row);
+      });
+      return map;
+    }
+
+    function compareChecklistInventory(startRows, currentRows) {
+      const startMap = inventorySnapshotMap(startRows);
+      const currentMap = inventorySnapshotMap(currentRows);
+      const keys = new Set(Array.from(startMap.keys()).concat(Array.from(currentMap.keys())));
+      const changes = [];
+      keys.forEach(function(key) {
+        const before = startMap.get(key) || {};
+        const after = currentMap.get(key) || {};
+        const bq = Number(before.quantity) || 0;
+        const aq = Number(after.quantity) || 0;
+        if (bq === aq) return;
+        changes.push({
+          item: after.item || before.item || 'Item',
+          area: after.area || before.area || '',
+          bin: after.bin || before.bin || '',
+          before: bq,
+          after: aq,
+          notes: String(after.notes || before.notes || '').trim()
+        });
+      });
+      return changes;
+    }
+
+    async function reviewVanReturn() {
+      const btn = document.getElementById('checklistReviewBtn');
+      const review = document.getElementById('checklistReturnReview');
+      const summary = document.getElementById('checklistReturnSummary');
+      const list = document.getElementById('checklistReturnChanges');
+      btn.disabled = true;
+      btn.textContent = 'Refreshing live inventory…';
+      try {
+        const state = await apiGetVanChecklistState(currentChecklistVan);
+        currentVanChecklistState = state;
+        invCache[currentChecklistVan] = state.inventory || [];
+        invCache.summary = state.summary || [];
+        renderChecklistNotes(state.notes || []);
+        renderChecklistInventoryAttention(state.inventory || []);
+        const changes = compareChecklistInventory(state.startInventory || [], state.inventory || []);
+        list.replaceChildren();
+        if (!changes.length) {
+          summary.textContent = 'No quantity changes since sign-out. Current unresolved notes and discrepancies will still be captured with the return snapshot.';
+        } else {
+          summary.textContent = changes.length + ' inventory ' + (changes.length === 1 ? 'change' : 'changes') + ' since sign-out:';
+          changes.forEach(function(change) {
+            const div = document.createElement('div');
+            div.className = 'checklist-review-change';
+            const where = formatLocation(change.area, change.bin);
+            div.textContent = change.item + ': ' + change.before + ' → ' + change.after + (where ? ' • ' + where : '') + (change.notes ? ' • ' + change.notes : '');
+            list.appendChild(div);
+          });
+        }
+        review.classList.remove('hidden');
+        review.scrollIntoView({ behavior:'smooth', block:'nearest' });
+      } catch (err) {
+        alert('Could not refresh live inventory for return: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Review & Return Van';
+      }
+    }
+
+    async function returnSelectedVan() {
+      const active = currentVanChecklistState && currentVanChecklistState.activeCheckout;
+      if (!active) {
+        alert('This van is no longer signed out. Refresh the checklist.');
+        return;
+      }
+      const btn = document.getElementById('checklistReturnBtn');
+      btn.disabled = true;
+      btn.textContent = 'Returning van…';
+      try {
+        const payload = {
+          van: currentChecklistVan,
+          sessionId: active.sessionId,
+          employee: active.employee,
+          checklist: getCheckedChecklistItems('end'),
+          note: String(document.getElementById('checklistEndNote').value || '').trim(),
+          noteNeedsAttention: document.getElementById('checklistEndUrgent').checked
+        };
+        await apiReturnVan(payload);
+        clearChecklistChecks(currentChecklistVan, 'end');
+        document.getElementById('checklistEndNote').value = '';
+        document.getElementById('checklistEndUrgent').checked = false;
+        vanChecklistOverview[currentChecklistVan] = { active:false };
+        updateChecklistOverviewButtons();
+        await loadVanChecklistState(currentChecklistVan);
+      } catch (err) {
+        alert('Could not return van: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Return Van';
+      }
+    }
+
     window.onload = async function() {
       // Start offline/PWA setup in parallel. Never make live inventory wait for it.
       waInitPwa().catch(function(err) {
@@ -899,26 +1364,29 @@
         }
       }
     };
-    // MODE SWITCHER (LOG vs INVENTORY)
+    // MODE SWITCHER (LOG / INVENTORY / VAN CHECKLIST)
     function switchTopMode(mode) {
       currentTopMode = mode;
       document.body.classList.toggle('log-mode', mode === 'log');
       const logCont = document.getElementById('logContainer');
       const invCont = document.getElementById('inventoryContainer');
+      const checklistCont = document.getElementById('checklistContainer');
       const btnLog = document.getElementById('modeBtnLog');
       const btnInv = document.getElementById('modeBtnInv');
-      if (mode === 'log') {
-        logCont.classList.remove('hidden');
-        invCont.classList.add('hidden');
-        btnLog.className = 'py-2 rounded-lg text-center bg-white text-indigo-700 shadow-sm transition-all';
-        btnInv.className = 'py-2 rounded-lg text-center text-indigo-100 hover:text-white transition-all';
-      } else {
-        logCont.classList.add('hidden');
-        invCont.classList.remove('hidden');
-        btnInv.className = 'py-2 rounded-lg text-center bg-white text-indigo-700 shadow-sm transition-all';
-        btnLog.className = 'py-2 rounded-lg text-center text-indigo-100 hover:text-white transition-all';
-        loadInventoryTab(currentInvTab);
-      }
+      const btnChecklist = document.getElementById('modeBtnChecklist');
+
+      logCont.classList.toggle('hidden', mode !== 'log');
+      invCont.classList.toggle('hidden', mode !== 'inventory');
+      checklistCont.classList.toggle('hidden', mode !== 'checklist');
+
+      const inactive = 'py-2 rounded-lg text-center text-indigo-100 hover:text-white transition-all leading-tight';
+      const active = 'py-2 rounded-lg text-center bg-white text-indigo-700 shadow-sm transition-all leading-tight';
+      btnLog.className = mode === 'log' ? active : inactive;
+      btnInv.className = mode === 'inventory' ? active : inactive;
+      btnChecklist.className = mode === 'checklist' ? active : inactive;
+
+      if (mode === 'inventory') loadInventoryTab(currentInvTab);
+      if (mode === 'checklist') loadVanChecklistOverview(true);
     }
     // INVENTORY TABS
     function loadInventoryTab(tabKey) {
@@ -1007,6 +1475,8 @@
           delete invCache[currentInvTab];
           fetchInventoryFromSheet(currentInvTab);
         }
+      } else if (currentTopMode === 'checklist') {
+        loadVanChecklistOverview(true);
       } else {
         apiGetToolItems()
           .then(function(items) { allItems = items; })

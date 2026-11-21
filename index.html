@@ -67,7 +67,7 @@
         </svg>
         <div class="flex items-baseline space-x-2">
           <h1 class="font-bold text-base tracking-tight">Van Inventory Hub</h1>
-          <span style="font-size:9px;opacity:.75;font-weight:700">v1.21.4</span>
+          <span style="font-size:9px;opacity:.75;font-weight:700">v1.21.5</span>
         </div>
       </div>
       <button onclick="refreshActiveView()" title="Refresh Data" class="p-1 rounded bg-indigo-700 hover:bg-indigo-800 text-indigo-100 text-xs flex items-center space-x-1">
@@ -239,7 +239,7 @@
         <div class="mt-5 p-3 rounded-xl border border-slate-200 bg-slate-50">
           <label for="checklistStartNote" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Add van note <span class="normal-case font-normal">(optional)</span></label>
           <textarea id="checklistStartNote" rows="2" maxlength="500" placeholder="Anything the next driver should know…" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
-          <label class="flex items-center gap-3 mt-3 p-3 rounded-xl border border-amber-200 bg-amber-50 text-xs font-bold text-amber-900"><input id="checklistStartUrgent" type="checkbox" class="w-5 h-5 shrink-0"><span>Needs attention before next use</span></label>
+          <label class="checklist-row mt-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900"><input id="checklistStartUrgent" type="checkbox"><span>Needs attention before next use</span></label>
         </div>
 
         <div class="mt-7 pt-5 border-t border-slate-200">
@@ -263,19 +263,20 @@
         </div>
 
         <div class="checklist-heading">If needed</div>
+        <p class="text-[11px] font-semibold text-slate-500 mb-2">Check items you actually complete. Battery and speaker checks log a reminder to put them back in the van.</p>
         <div class="checklist-group">
           <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="All tool events logged" onchange="persistChecklistChecks('end')"><span>All tool events logged</span></label>
           <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Broken tools moved to Broken Bin" onchange="persistChecklistChecks('end')"><span>Broken tools moved to Broken Bin</span></label>
           <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Replenish lumber" onchange="persistChecklistChecks('end')"><span>Replenish lumber</span></label>
           <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Replenish materials / hardware" onchange="persistChecklistChecks('end')"><span>Replenish materials / hardware</span></label>
-          <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Bring in batteries to charge" onchange="persistChecklistChecks('end')"><span>Bring in batteries to charge</span></label>
-          <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Bring in speaker to charge" onchange="persistChecklistChecks('end')"><span>Bring in speaker to charge</span></label>
+          <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Batteries brought in to charge" onchange="persistChecklistChecks('end')"><span>Batteries brought in to charge</span></label>
+          <label class="checklist-row"><input type="checkbox" data-checklist="end" data-label="Speaker brought in to charge" onchange="persistChecklistChecks('end')"><span>Speaker brought in to charge</span></label>
         </div>
 
         <div class="mt-5 p-3 rounded-xl border border-slate-200 bg-slate-50">
           <label for="checklistEndNote" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Add van note <span class="normal-case font-normal">(optional)</span></label>
           <textarea id="checklistEndNote" rows="2" maxlength="500" placeholder="Anything the next driver should know…" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
-          <label class="flex items-center gap-3 mt-3 p-3 rounded-xl border border-amber-200 bg-amber-50 text-xs font-bold text-amber-900"><input id="checklistEndUrgent" type="checkbox" class="w-5 h-5 shrink-0"><span>Needs attention before next use</span></label>
+          <label class="checklist-row mt-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900"><input id="checklistEndUrgent" type="checkbox"><span>Needs attention before next use</span></label>
         </div>
 
         <div id="checklistReturnReview" class="mt-8 pt-6 border-t-2 border-slate-200 space-y-3">
@@ -556,7 +557,7 @@
       </button>
     </form>
   </main>
-  <script src="pwa.js?v=1.21.4"></script>
+  <script src="pwa.js?v=1.21.5"></script>
   <script>
     let allItems = [];
     let currentAction = '';
@@ -567,6 +568,7 @@
     let vanChecklistOverview = {};
     let currentVanChecklistState = null;
     const vanChecklistStateCache = {};
+    let vanAttentionNotesByVan = { '2015': [], '2021': [], '2026': [] };
     let checklistLiveReady = false;
     let checklistRefreshToken = 0;
 
@@ -1445,9 +1447,7 @@
       return (rows || []).filter(function(row) {
         const quantity = Number(row.quantity) || 0;
         const baseline = Number(row.baseline) || 0;
-        const notes = String(row.notes || '').trim();
-        const needsReplenishment = Boolean(row.pwaNeedsReplenishment);
-        return quantity !== baseline || Boolean(notes) || needsReplenishment;
+        return quantity !== baseline;
       });
     }
 
@@ -1649,6 +1649,7 @@
         renderBinTiles();
         renderFilteredInventory();
         attentionDataTabs.forEach(function(tab) { refreshInventorySilently(tab); });
+        refreshVanAttentionNotesSilently();
         return;
       }
       document.getElementById('baselineAlerts').classList.add('hidden');
@@ -1657,6 +1658,7 @@
       document.getElementById('binTilesSection').classList.add('hidden');
       document.getElementById('activeBinHeader').classList.add('hidden');
       loader.classList.remove('hidden');
+      refreshVanAttentionNotesSilently();
       Promise.all(attentionDataTabs.map(function(tab) {
         return apiGetInventory(tab, { silentStatus: true }).then(function(rows) { invCache[tab] = rows; });
       })).then(function() {
@@ -1676,6 +1678,7 @@
     }
     function refreshInventorySilently(tabKey) {
       if (navigator.onLine === false) return;
+      if (['2015', '2021', '2026'].includes(String(tabKey))) refreshVanAttentionNotesSilently();
       apiGetInventory(tabKey, { silentStatus: true })
         .then(function(res) {
           invCache[tabKey] = res;
@@ -1714,6 +1717,7 @@
       loader.classList.remove('hidden');
       list.innerHTML = '';
       binSec.classList.add('hidden');
+      if (['2015', '2021', '2026'].includes(String(tabKey))) refreshVanAttentionNotesSilently();
       apiGetInventory(tabKey)
         .then(function(res) {
           loader.classList.add('hidden');
@@ -2109,60 +2113,169 @@
       }
       return card;
     }
+    async function refreshVanAttentionNotesSilently() {
+      try {
+        const notes = await apiGetVanAttentionNotes();
+        vanAttentionNotesByVan = notes || { '2015': [], '2021': [], '2026': [] };
+        if (currentTopMode === 'inventory') renderBaselineAlerts();
+      } catch (err) {
+        console.warn('Van attention reminder refresh failed:', err);
+      }
+    }
+
+    function openChecklistForVan(van) {
+      currentChecklistVan = String(van);
+      switchTopMode('checklist');
+    }
+
+    function buildInventoryVanReminderCard(note, van, compact) {
+      const card = document.createElement('div');
+      card.className = 'attention-card' + (compact ? ' attention-card-compact' : '');
+      card.dataset.van = String(van);
+
+      const top = document.createElement('div');
+      top.className = 'attention-card-top';
+
+      const titleWrap = document.createElement('div');
+      titleWrap.className = 'min-w-0';
+
+      const title = document.createElement('h3');
+      title.className = 'attention-tool-name';
+      title.textContent = String(note.note || 'Van reminder');
+
+      const location = document.createElement('p');
+      location.className = 'attention-location';
+      location.textContent = 'Van reminder';
+
+      titleWrap.append(title, location);
+
+      const badge = document.createElement('span');
+      badge.className = 'attention-van-badge';
+      badge.textContent = vanDisplayName(van);
+
+      top.append(titleWrap, badge);
+      card.appendChild(top);
+
+      const meta = document.createElement('div');
+      meta.className = 'attention-meta-line';
+
+      const status = document.createElement('span');
+      status.className = 'attention-status-high';
+      status.textContent = 'Needs attention before departure';
+
+      meta.appendChild(status);
+      card.appendChild(meta);
+
+      if (note.createdBy || note.createdAt) {
+        const detail = document.createElement('p');
+        detail.className = 'attention-note';
+        detail.textContent =
+          (note.createdBy ? 'Added by ' + note.createdBy : '') +
+          (note.createdAt ? (note.createdBy ? ' • ' : '') + formatChecklistTime(note.createdAt) : '');
+        card.appendChild(detail);
+      }
+
+      const actions = document.createElement('div');
+      actions.className = 'attention-actions';
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'attention-action-button';
+      btn.style.width = '100%';
+      btn.textContent = 'Open Van Checklist';
+      btn.addEventListener('click', function() { openChecklistForVan(van); });
+
+      actions.appendChild(btn);
+      card.appendChild(actions);
+      return card;
+    }
+
     function renderBaselineAlerts() {
       const section = document.getElementById('baselineAlerts');
       const list = document.getElementById('baselineAlertsList');
       list.replaceChildren();
       section.classList.remove('all-vans-attention');
+
       let entries = [];
+      let reminders = [];
       let compact = false;
+
       if (currentInvTab === 'attention') {
         compact = true;
         section.classList.add('all-vans-attention');
         ['2015', '2021', '2026'].forEach(function(van) {
           const rows = invCache[van];
-          if (!Array.isArray(rows)) return;
-          getBaselineDiscrepancies(rows).forEach(function(entry) {
-            entries.push(Object.assign({}, entry, { van: van }));
+          if (Array.isArray(rows)) {
+            getBaselineDiscrepancies(rows).forEach(function(entry) {
+              entries.push(Object.assign({}, entry, { van: van }));
+            });
+          }
+          (vanAttentionNotesByVan[van] || []).forEach(function(note) {
+            if (note && note.needsAttention) reminders.push({ van: van, note: note });
           });
         });
       } else if (['2015', '2021', '2026'].includes(currentInvTab) && invCache[currentInvTab]) {
         entries = getBaselineDiscrepancies(invCache[currentInvTab]).map(function(entry) {
           return Object.assign({}, entry, { van: currentInvTab });
         });
+        reminders = (vanAttentionNotesByVan[currentInvTab] || [])
+          .filter(function(note) { return note && note.needsAttention; })
+          .map(function(note) { return { van: currentInvTab, note: note }; });
       } else {
         section.classList.add('hidden');
         return;
       }
-      if (!entries.length) {
+
+      if (!entries.length && !reminders.length) {
         if (currentInvTab === 'attention') {
           document.getElementById('baselineAlertsTitle').textContent = '✅ All vans — nothing needs attention';
-          document.getElementById('baselineAlertsSummary').textContent = 'All tracked van quantities are at baseline.';
+          document.getElementById('baselineAlertsSummary').textContent = 'All tracked van quantities are at baseline and there are no open departure reminders.';
           section.classList.remove('hidden');
         } else {
           section.classList.add('hidden');
         }
         return;
       }
+
       const order = { '2015': 0, '2021': 1, '2026': 2 };
       entries.sort(function(a, b) {
         const shortageOrder = (a.difference < 0 ? 0 : 1) - (b.difference < 0 ? 0 : 1);
         if (shortageOrder) return shortageOrder;
         return (order[a.van] || 0) - (order[b.van] || 0);
       });
+      reminders.sort(function(a, b) {
+        return (order[a.van] || 0) - (order[b.van] || 0);
+      });
+
       const shortages = entries.filter(function(entry) { return entry.difference < 0; });
       const needed = shortages.reduce(function(total, entry) { return total - entry.difference; }, 0);
       const excess = entries.length - shortages.length;
+
       document.getElementById('baselineAlertsTitle').textContent = currentInvTab === 'attention'
-        ? '⚠️ All Vans — Inventory needs attention'
-        : '⚠️ ' + currentInvTab + ' Van — Inventory needs attention';
-      document.getElementById('baselineAlertsSummary').textContent = shortages.length + ' shortage entries · ' + needed + ' units needed'
-        + (excess ? ' · ' + excess + ' above-baseline entries' : '');
+        ? '⚠️ All Vans — Needs attention'
+        : '⚠️ ' + currentInvTab + ' Van — Needs attention';
+
+      const summaryParts = [];
+      if (entries.length) {
+        summaryParts.push(shortages.length + ' shortage ' + (shortages.length === 1 ? 'entry' : 'entries'));
+        if (needed) summaryParts.push(needed + ' ' + (needed === 1 ? 'unit' : 'units') + ' needed');
+        if (excess) summaryParts.push(excess + ' above-baseline ' + (excess === 1 ? 'entry' : 'entries'));
+      }
+      if (reminders.length) {
+        summaryParts.push(reminders.length + ' van ' + (reminders.length === 1 ? 'reminder' : 'reminders'));
+      }
+      document.getElementById('baselineAlertsSummary').textContent = summaryParts.join(' · ');
+
       entries.forEach(function(entry) {
         list.appendChild(buildBaselineAlertCard(entry, entry.van, compact));
       });
+      reminders.forEach(function(entry) {
+        list.appendChild(buildInventoryVanReminderCard(entry.note, entry.van, compact));
+      });
+
       section.classList.remove('hidden');
     }
+
     function renderFilteredInventory() {
       const searchSection = document.getElementById('inventorySearchSection');
       const list = document.getElementById('invCardsList');
